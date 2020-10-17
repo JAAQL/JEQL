@@ -96,7 +96,8 @@ JEQL.testJAAQL = function (arg, renderFunction) {
     JEQL.load({
         query:{ query: {
             select: "*",
-            from: "pg_database"
+            from: "pg_database",
+            "order by": "1, 2, 3"
         }},
         render: renderFunction
     });
