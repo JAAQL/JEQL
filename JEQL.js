@@ -887,8 +887,7 @@ const JEQL = {
             ")"
         );
 
-// Disabled, GJB, 2020.10.17 in connection with CORS problems
-//        request.withCredentials = true;
+        request.withCredentials = false;
         request.onerror = function () {
             JEQL.halt("Request failed!");
         };
