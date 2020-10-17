@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <!-- Copyright (c) 1995, 2020 SQMI bv. All Rights Reserved -->
+        <title>JEQL&mdash;Test</title>
+        <!--[if lt IE 9]>
+            <script src="http://html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+        <![endif]-->
+        <script src="JEQL.js?nocache"></script>
+        <script src="JEQL.test.js?nocache"></script>
+        <style>
+            table { border-collapse: collapse; }
+            td, th { border: solid gray 1px; padding: 0.2em 0.4em }
+            .caption { display: none }
+        </style>
+    </head>
+    <body>
+        <p>Refresh to (re-)run the tests&mdash;<em>Ctrl-R</em>
+<!--        <p id="JEQL--log"><b>Results:</b></p> -->
+        <script>
+//            JEQL.testWithTrace(JEQL);
+//            JEQL.testWithTrace(JEQL.Lib);
+            JEQL.testJAAQL("select * from pg_database", JEQL.table);
+        </script>
+    </body>
+</html>
