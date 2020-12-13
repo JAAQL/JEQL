@@ -873,7 +873,7 @@ const JEQL = {
         }
     },
 
-    get: function (container, queries, renders) {
+    get: function (container, queries, renders, runAsync = true) {
         var request = (
             window.XMLHttpRequest
             ? new XMLHttpRequest()
@@ -913,7 +913,8 @@ const JEQL = {
                 }
             }
         };
-        request.open("POST", "http://185.78.198.89:6060/database", true);
+
+        request.open("POST", JEQL.settings.endpoint, runAsync);
         request.setRequestHeader(
             JEQL.HTTP.requestHeader.contentType,
             JEQL.HTTP.requestHeader.JSON
@@ -1053,6 +1054,50 @@ const JEQL = {
             "selector": args[eventType],
             "action": args.action
         });
+    },
+    
+    submit: function (args) {
+        const scriptElements = document.getElementsByTagName(JEQL.DOM.script);
+        const lastScriptElement = (
+            (scriptElements && scriptElements.length)
+            ? scriptElements[scriptElements.length - 1]
+            : null
+        );
+        const container = (
+            lastScriptElement
+            ? lastScriptElement.parentElement
+            : document.body
+        );
+
+        const queryFunction = (
+            JEQL.settings.fakeData
+            ? JEQL.fake
+            : JEQL.get
+        );
+        var queries = [];
+        var renders = [];
+        var i = 0;
+
+        JEQL.trace(
+            "submit(" + container.tagName +
+            ", " + JSON.stringify(args) +
+            ")"
+        );
+        var runAsync = true;
+        if (Array.isArray(args)) {
+            for (i = 0; i < args.length; i += 1) {
+                queries.push(args[i].query);
+                renders.push(JEQL.expandRender(args[i].render));
+            }
+        } else {
+            queries.push(args.query);
+            renders.push(JEQL.expandRender(args.render));
+            if ('async' in args) {
+                runAsync = args.async;
+            }
+        }
+
+        queryFunction(container, queries, renders, runAsync);
     }
 };
 JEQL.init();
