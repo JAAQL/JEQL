@@ -103,6 +103,7 @@ const JEQL = {
     settings: {
         debug: false,
         debugCall: false,
+        endpoint: "http://185.78.198.89:6060/database",
         fakeData: false,
         eventHandlers: [],
         iterationLimit: 100,
