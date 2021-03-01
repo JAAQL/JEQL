@@ -28,6 +28,8 @@
     trace, trigger, tuesday, type, unset, unshift, using, value, viewport,
     wednesday, withCredentials, zero, zeroOrOne
 */
+
+
 const JEQL = {
     Name: "JEQL",
     Class: {
@@ -76,14 +78,19 @@ const JEQL = {
         readyState: {
             done: 4
         },
+		sessionStorage: {
+			jaaqlKey: 'jaaql_key'
+		},
         status: {
             ok: 200,
             notFound: 404
         },
         requestHeader: {
+			authorization: "authorization_key",
             contentType: "Content-Type",
             JSON: "application/json",
-            JSON_UTF8: "application/json; charset=UTF-8"
+            JSON_UTF8: "application/json; charset=UTF-8",
+            FORM: "application/x-www-form-urlencoded"
         }
     },
     Anatomy: {
@@ -103,7 +110,7 @@ const JEQL = {
     settings: {
         debug: false,
         debugCall: false,
-        endpoint: "http://185.78.198.89:6060/database",
+        endpoint: "http://localhost:6060/",
         fakeData: false,
         eventHandlers: [],
         iterationLimit: 100,
@@ -113,6 +120,33 @@ const JEQL = {
         memberGlyph: ".",
         URIQueryGlyph: "?"
     },
+	
+	helpers: {
+		encodePostBody: function(input) {
+			var ret = "";
+			var first = true;
+			for (var key in input) {
+				if (!first) { ret += "&"; }
+				ret += key + "=" + encodeURIComponent(input[key]);
+				first = false;
+			}
+			return ret;
+		},
+		formatFromUrl: function(newUrl) {
+			var url = "";
+			for (var i = 0; i < window.location.href.split("/").length - 1; i ++) {
+				if (i !== 0) { url += "/"; }
+				url += window.location.href.split("/")[i];
+			}
+			url += "/" + newUrl;
+			return url;
+		}
+	},
+	
+	endpoints: {
+		login: "login",
+		submit: "submit"
+	},
 
     log: function (logElement, msg) {
         if (logElement) {
@@ -120,6 +154,11 @@ const JEQL = {
         }
         console.log(msg);
     },
+	
+	pages: {
+		login: "login.html",
+		root: "index.html"
+	},
 
     debug: function (args) {
         JEQL.settings.debug = true;
@@ -351,6 +390,19 @@ const JEQL = {
     },
 
     init: function () {
+		if (window.location.href !== JEQL.helpers.formatFromUrl(JEQL.pages.login)) {
+			if (!(JEQL.HTTP.sessionStorage.jaaqlKey in window.sessionStorage)) {
+				window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+			} else {
+				// TODO swap this out for a login checker
+				JEQL.submit({
+					"query": "SELECT version()",
+					"render": function() {},
+					"async": false
+				});
+			}
+		}
+		
         const href = window.location.href;
         const questionMark = href.indexOf(JEQL.settings.URIQueryGlyph);
         const uriData = (
@@ -890,6 +942,9 @@ const JEQL = {
 
         request.withCredentials = false;
         request.onerror = function () {
+			if (this.status === 401) {
+				window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+			}
             JEQL.halt("Request failed!");
         };
         request.onreadystatechange = function () {
@@ -915,10 +970,14 @@ const JEQL = {
             }
         };
 
-        request.open("POST", JEQL.settings.endpoint, runAsync);
+        request.open("POST", JEQL.settings.endpoint + JEQL.endpoints.submit, runAsync);
         request.setRequestHeader(
             JEQL.HTTP.requestHeader.contentType,
             JEQL.HTTP.requestHeader.JSON
+        );
+		request.setRequestHeader(
+            JEQL.HTTP.requestHeader.authorization,
+            window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey]
         );
         try {
             request.send(JSON.stringify(queries));
@@ -1099,6 +1158,55 @@ const JEQL = {
         }
 
         queryFunction(container, queries, renders, runAsync);
-    }
+    },
+	
+	login: function (username, password) {
+		var request = (
+            window.XMLHttpRequest
+            ? new XMLHttpRequest()
+            : new ActiveXObject("Microsoft.XMLHTTP")
+        );
+
+        JEQL.trace(
+            "login(" + username + ", ...)"
+        );
+
+        request.withCredentials = false;
+        request.onerror = function () {
+			if (this.status === 401) {
+				alert("Incorrect Credentials!"); // TODO spice me up!
+			} else {
+				alert("Could not login: " + request.responseText);
+			}
+            JEQL.halt("Request failed!");
+        };
+        request.onreadystatechange = function () {
+            var i = 0;
+            var response;
+            if (request.readyState === JEQL.HTTP.readyState.done) {
+                if (request.status === JEQL.HTTP.status.ok) {
+                    window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey] = request.responseText;
+					window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.root));
+                } else {
+                    JEQL.halt(
+                        "Request completed but not OK: status was " +
+                        request.status + ", response was '" +
+                        request.responseText + "'"
+                    );
+                }
+            }
+		}
+		
+		request.open("POST", JEQL.settings.endpoint + JEQL.endpoints.login, false);
+        request.setRequestHeader(
+            JEQL.HTTP.requestHeader.contentType,
+            JEQL.HTTP.requestHeader.FORM
+        );
+        try {
+            request.send(JEQL.helpers.encodePostBody({"username": username, "password": password}));
+        } catch (e) {
+            JEQL.halt("Failed to send request: " + e.toString());
+        }
+	}
 };
 JEQL.init();
