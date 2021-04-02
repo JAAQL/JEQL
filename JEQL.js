@@ -36,6 +36,7 @@ const JEQL = {
         add: "add",
         "button": "button",
         caption: "caption",
+        columns: "columns",
         cover: "cover",
         "delete": "delete",
         echo: "echo",
@@ -49,6 +50,10 @@ const JEQL = {
         parameters: "parameters",
         popup: "popup",
         query: "query",
+        render: "render",
+        renderAsObjects: "renderAsObjects",
+        renderAsTuples: "renderAsTuples",
+        rows: "rows",
         table: "table",
         value: "value",
         viewport: "viewport"
@@ -916,7 +921,7 @@ const JEQL = {
         return result;
     },
 
-    fake: function (container, queries, renders, errHandlers) {
+    fake: function (container, queries, renders, renderAsTuples, errHandlers) {
         var i = 0;
 
         JEQL.trace(
@@ -979,8 +984,25 @@ const JEQL = {
             div.style.opacity = 1.0;
         }, 200);
     },
+    
+    tuplesToObjects: function(response) {
+        var columns = response[JEQL.Class.columns];
+        var rows = response[JEQL.Class.rows];
+        
+        var ret = [];
+        
+        for (var i = 0; i < rows.length; i ++) {
+            var obj = {};
+            for (var i2 = 0; i2 < columns.length; i2 ++) {
+                obj[columns[i2]] = rows[i][i2];
+            }
+            ret.push(obj);
+        }
 
-    get: function (container, queries, renders, errHandler, runAsync = true) {
+        return ret;
+    },
+
+    get: function (container, queries, renders, renderAsTuples, errHandler, runAsync = true) {
         var request = (
             window.XMLHttpRequest
             ? new XMLHttpRequest()
@@ -1008,6 +1030,11 @@ const JEQL = {
                         renders[i].using(
                             container,
                             renders[i],
+                            JEQL.tuplesToObjects(response[i])
+                        );
+                        renderAsTuples[i].using(
+                            container,
+                            renderAsTuples[i],
                             response[i]
                         );
                     }
@@ -1076,6 +1103,7 @@ const JEQL = {
 
         var queries = [];
         var renders = [];
+        var renderAsTuples = [];
         var errHandlers = [];
         var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
 
@@ -1090,11 +1118,34 @@ const JEQL = {
         if (Array.isArray(args)) {
             for (i = 0; i < args.length; i += 1) {
                 queries.push(args[i].query);
-                renders.push(JEQL.expandRender(args[i].render));
+                
+                if (JEQL.Class.render in args[i]) {
+                    renders.push(JEQL.expandRender(args[i].render));
+                } else if (JEQL.Class.renderAsObjects in args[i]) {
+                    renders.push(JEQL.expandRender(args[i].renderAsObjects));
+                } else {
+                    renders.push(JEQL.expandRender(function() {  }));
+                }
+                if (JEQL.Class.renderAsTuples in args[i]) {
+                    renderAsTuples.push(JEQL.expandRender(args[i].renderAsTuples));
+                } else {
+                    renderAsTuples.push(JEQL.expandRender(function() {  }));
+                }
             }
         } else {
             queries.push(args.query);
-            renders.push(JEQL.expandRender(args.render));
+            if (JEQL.Class.render in args) {
+                renders.push(JEQL.expandRender(args.render));
+            } else if (JEQL.Class.renderAsObjects in args) {
+                renders.push(JEQL.expandRender(args.renderAsObjects));
+            } else {
+                renders.push(JEQL.expandRender(function() {  }));
+            }
+            if (JEQL.Class.renderAsTuples in args) {
+                renderAsTuples.push(JEQL.expandRender(args.renderAsTuples));
+            } else {
+                renderAsTuples.push(JEQL.expandRender(function() {  }));
+            }
             if (JEQL.Class.error in args) {
                 errorHandler = args.error;
             }
@@ -1104,7 +1155,7 @@ const JEQL = {
             errorHandler = defaultErrorHandler;
         }
         
-        queryFunction(container, queries, renders, errorHandler);
+        queryFunction(container, queries, renders, renderAsTuples, errorHandler);
     },
 
     handleEvent: function (e) {
@@ -1204,6 +1255,7 @@ const JEQL = {
         );
         var queries = [];
         var renders = [];
+        var renderAsTuples = [];
         var i = 0;
         
         var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
@@ -1225,7 +1277,19 @@ const JEQL = {
                     subDict[JEQL.Class.parameters] = args[i].parameters;
                 }
                 queries.push(subDict);
-                renders.push(JEQL.expandRender(args[i].render));
+
+                if (JEQL.Class.render in args[i]) {
+                    renders.push(JEQL.expandRender(args[i].render));
+                } else if (JEQL.Class.renderAsObjects in args[i]) {
+                    renders.push(JEQL.expandRender(args[i].renderAsObjects));
+                } else {
+                    renders.push(JEQL.expandRender(function() {  }));
+                }
+                if (JEQL.Class.renderAsTuples in args[i]) {
+                    renderAsTuples.push(JEQL.expandRender(args[i].renderAsTuples));
+                } else {
+                    renderAsTuples.push(JEQL.expandRender(function() {  }));
+                }
             }
         } else {
             var subDict = {};
@@ -1240,7 +1304,20 @@ const JEQL = {
                 errorHandler = args.error;
             }
             queries.push(subDict);
-            renders.push(JEQL.expandRender(args.render));
+            
+            if (JEQL.Class.render in args) {
+                renders.push(JEQL.expandRender(args.render));
+            } else if (JEQL.Class.renderAsObjects in args) {
+                renders.push(JEQL.expandRender(args.renderAsObjects));
+            } else {
+                renders.push(JEQL.expandRender(function() {  }));
+            }
+            if (JEQL.Class.renderAsTuples in args) {
+                renderAsTuples.push(JEQL.expandRender(args.renderAsTuples));
+            } else {
+                renderAsTuples.push(JEQL.expandRender(function() {  }));
+            }
+
             if ('async' in args) {
                 runAsync = args.async;
             }
@@ -1250,7 +1327,7 @@ const JEQL = {
             errorHandler = defaultErrorHandler;
         }
 
-        queryFunction(container, queries, renders, errorHandler, runAsync);
+        queryFunction(container, queries, renders, renderAsTuples, errorHandler, runAsync);
     },
     
     login: function (username, password, callback = window.location.replace) {

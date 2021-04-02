@@ -5,17 +5,19 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1">
 		<script type="text/javascript" src="../../JEQL.js"></script>
 		<link rel="stylesheet" href="../../JEQL.css">
-		<script type="text/javascript" src="index.js"></script>
+		<script type="text/javascript" src="../testbed.js"></script>
 		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.1/styles/default.min.css">
 		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.1/highlight.min.js"></script>
 		<script>hljs.highlightAll();</script>
 	</head>
 	<body>
 		<h1>JEQL Examples</h1>
+		<h2>Contents</h2>
+		<ul class="jeql-test-contents" id="test-contents"></ul>
 
-		<h2>Select From Table</h2>
-		<h3>JEQL Code</h3>
 		<div class="jeql-test">
+			<h2>Select From Table</h2>
+			<h3>JEQL Code</h3>
 			<pre><code class="language-javascript hljs">JEQL.submit({
     "query": "SELECT * FROM jaaql_test_schema.exchange WHERE incorporation_date > :incorporation_date",
     "parameters": {
@@ -24,6 +26,9 @@
     "render": function(container, render, response) {
         setTestResult("jeql-result-1", response);
     },
+    "renderAsTuples": function(container, render, response) {
+        setTestResult("jeql-result-tuples-1", response);
+    },
     "error": function(status, response, message) {
         alert(message);
         JEQL.halt(message);
@@ -31,6 +36,33 @@
 });</code></pre>
 			<h3>Result</h3>
 			<pre><code id="jeql-result-1" class="language-json hljs"></code></pre>
+			<h3>Result Tuples</h3>
+			<pre><code id="jeql-result-tuples-1" class="language-json hljs"></code></pre>
+		</div>
+		
+		<div class="jeql-test">
+			<h2>Pivot on Result</h2>
+			<h3>JEQL Code</h3>
+			<pre><code class="language-javascript hljs">JEQL.submit({
+    "query": "SELECT * FROM jaaql_test_schema.exchange WHERE incorporation_date < :incorporation_date",
+    "parameters": {
+        "incorporation_date": "1800/01/01"
+    },
+    "render": function(container, render, response) {
+        setTestResult("jeql-result-2", response);
+    },
+    "renderAsTuples": function(container, render, response) {
+        setTestResult("jeql-result-tuples-2", response);
+    },
+    "error": function(status, response, message) {
+        alert(message);
+        JEQL.halt(message);
+    }
+});</code></pre>
+			<h3>Result</h3>
+			<pre><code id="jeql-result-2" class="language-json hljs"></code></pre>
+			<h3>Result Tuples</h3>
+			<pre><code id="jeql-result-tuples-2" class="language-json hljs"></code></pre>
 		</div>
 	</body>
 </html>

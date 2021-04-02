@@ -1,3 +1,13 @@
+.jeql-test {
+	padding-bottom: 2em;
+	padding-top: 2em;
+	border-top: 1px solid black;
+}
+
+.jeql-test-contents {
+	padding-bottom: 1em;
+}
+
 .login-modal-container {
   font-family: Verdana, sans-serif;
   font-size: 80%;
