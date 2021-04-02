@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+	<title id="page-title">JEQL - Stocks App</title>
+	<head>
+		<meta name="viewport" content="width=device-width, initial-scale=1">
+		<script type="text/javascript" src="../../JEQL.js"></script>
+		<link rel="stylesheet" href="../../JEQL.css">
+		<script type="text/javascript" src="index.js"></script>
+		<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.1/styles/default.min.css">
+		<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/10.7.1/highlight.min.js"></script>
+		<script>hljs.highlightAll();</script>
+	</head>
+	<body>
+		<h1>JEQL Examples</h1>
+
+		<h2>Select From Table</h2>
+		<h3>JEQL Code</h3>
+		<div class="jeql-test">
+			<pre><code class="language-javascript hljs">JEQL.submit({
+    "query": "SELECT * FROM jaaql_test_schema.exchange WHERE incorporation_date > :incorporation_date",
+    "parameters": {
+        "incorporation_date": "1800/01/01"
+    },
+    "render": function(container, render, response) {
+        setTestResult("jeql-result-1", response);
+    },
+    "error": function(status, response, message) {
+        alert(message);
+        JEQL.halt(message);
+    }
+});</code></pre>
+			<h3>Result</h3>
+			<pre><code id="jeql-result-1" class="language-json hljs"></code></pre>
+		</div>
+	</body>
+</html>

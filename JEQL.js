@@ -38,12 +38,15 @@ const JEQL = {
         caption: "caption",
         cover: "cover",
         "delete": "delete",
+        echo: "echo",
         edit: "edit",
+		error: "error",
         empty: "empty",
         grid: "grid",
         legend: "legend",
         missing: "missing",
         operations: "operations",
+        parameters: "parameters",
         popup: "popup",
         query: "query",
         table: "table",
@@ -83,6 +86,7 @@ const JEQL = {
 		},
         status: {
             ok: 200,
+			unauthorized: 401,
             notFound: 404
         },
         requestHeader: {
@@ -156,7 +160,7 @@ const JEQL = {
     },
 	
 	pages: {
-		login: "login.html",
+		login: false,
 		root: "index.html"
 	},
 
@@ -390,9 +394,14 @@ const JEQL = {
     },
 
     init: function () {
-		if (window.location.href !== JEQL.helpers.formatFromUrl(JEQL.pages.login)) {
+		if (!JEQL.pages.login || window.location.href !== JEQL.helpers.formatFromUrl(JEQL.pages.login)) {
 			if (!(JEQL.HTTP.sessionStorage.jaaqlKey in window.sessionStorage)) {
-				window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+				if (JEQL.pages.login) {
+					window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+				} else {
+					window.addEventListener('DOMContentLoaded', JEQL.showLoginModal, false);
+					return;
+				}
 			} else {
 				// TODO swap this out for a login checker
 				JEQL.submit({
@@ -907,7 +916,7 @@ const JEQL = {
         return result;
     },
 
-    fake: function (container, queries, renders) {
+    fake: function (container, queries, renders, errHandlers) {
         var i = 0;
 
         JEQL.trace(
@@ -925,8 +934,53 @@ const JEQL = {
             );
         }
     },
+	
+	showLoginModal: function () {
+		if (document.getElementById("jeql__login_div")) { return; }
+		var loginDiv = document.createElement("div");
+		loginDiv.setAttribute("id", "jeql__login_div");
+		document.body.appendChild(loginDiv);
+		loginDiv.setAttribute("class", "login-modal-container");
 
-    get: function (container, queries, renders, runAsync = true) {
+		var sub = document.createElement("div");
+		loginDiv.appendChild(sub);
+		sub.setAttribute("class", "login-modal");
+		
+		var h1 = document.createElement("h1");
+		sub.appendChild(h1);
+		h1.innerHTML = "Login to Your Account";
+		
+		var input = document.createElement("input");
+		sub.appendChild(input);
+		input.setAttribute("type", "text");
+		input.setAttribute("name", "jaaql_user");
+		input.setAttribute("size", "10");
+		input.setAttribute("id", "jaaql_user");
+		input.setAttribute("placeholder", "Username");
+		
+		input = document.createElement("input");
+		sub.appendChild(input);
+		input.setAttribute("type", "password");
+		input.setAttribute("name", "jaaql_pass");
+		input.setAttribute("size", "10");
+		input.setAttribute("id", "jaaql_pass");
+		input.setAttribute("placeholder", "Password");
+		
+		var but = document.createElement("button");
+		sub.appendChild(but);
+		but.setAttribute("name", "login");
+		but.innerHTML = "Login";
+		but.onclick = function() {
+			JEQL.login(document.getElementById("jaaql_user").value, document.getElementById("jaaql_pass").value, function(rootUrl) { window.location.reload() });
+		}
+		
+		setTimeout(function() {
+			var div = document.getElementById("jeql__login_div");
+			div.style.opacity = 1.0;
+		}, 200);
+	},
+
+    get: function (container, queries, renders, errHandler, runAsync = true) {
         var request = (
             window.XMLHttpRequest
             ? new XMLHttpRequest()
@@ -942,9 +996,6 @@ const JEQL = {
 
         request.withCredentials = false;
         request.onerror = function () {
-			if (this.status === 401) {
-				window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
-			}
             JEQL.halt("Request failed!");
         };
         request.onreadystatechange = function () {
@@ -960,12 +1011,17 @@ const JEQL = {
                             response[i]
                         );
                     }
-                } else {
-                    JEQL.halt(
-                        "Request completed but not OK: status was " +
+                } else if (request.status === JEQL.HTTP.status.unauthorized) {
+					if (JEQL.pages.login) {
+						window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+					} else {
+						JEQL.showLoginModal();
+						return;
+					}
+				} else {
+					errHandler(request.status, request.responseText, "Request completed but not OK: status was " +
                         request.status + ", response was '" +
-                        request.responseText + "'"
-                    );
+                        request.responseText + "'");
                 }
             }
         };
@@ -1000,7 +1056,7 @@ const JEQL = {
     *    If, for whatever reason, we are unable to find the last script element
     *    we'll append the set of named elements to the body of the document
     **/
-    load: function (args) {
+    load: function (args, errorHandler = undefined) {
         const scriptElements = document.getElementsByTagName(JEQL.DOM.script);
         const lastScriptElement = (
             (scriptElements && scriptElements.length)
@@ -1017,8 +1073,12 @@ const JEQL = {
             ? JEQL.fake
             : JEQL.get
         );
+
         var queries = [];
         var renders = [];
+		var errHandlers = [];
+		var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
+
         var i = 0;
 
         JEQL.trace(
@@ -1035,8 +1095,16 @@ const JEQL = {
         } else {
             queries.push(args.query);
             renders.push(JEQL.expandRender(args.render));
+			if (JEQL.Class.error in args) {
+				errorHandler = args.error;
+			}
         }
-        queryFunction(container, queries, renders);
+		
+		if (errorHandler === undefined) {
+			errorHandler = defaultErrorHandler;
+		}
+		
+        queryFunction(container, queries, renders, errorHandler);
     },
 
     handleEvent: function (e) {
@@ -1116,7 +1184,7 @@ const JEQL = {
         });
     },
     
-    submit: function (args) {
+    submit: function (args, errorHandler = undefined) {
         const scriptElements = document.getElementsByTagName(JEQL.DOM.script);
         const lastScriptElement = (
             (scriptElements && scriptElements.length)
@@ -1137,6 +1205,8 @@ const JEQL = {
         var queries = [];
         var renders = [];
         var i = 0;
+		
+		var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
 
         JEQL.trace(
             "submit(" + container.tagName +
@@ -1146,21 +1216,44 @@ const JEQL = {
         var runAsync = true;
         if (Array.isArray(args)) {
             for (i = 0; i < args.length; i += 1) {
-                queries.push(args[i].query);
+				var subDict = {};
+				subDict[JEQL.Class.query] = args[i].query;
+				if (JEQL.Class.echo in args[i]) {
+					subDict[JEQL.Class.echo] = args[i].echo;
+				}
+				if (JEQL.Class.parameters in args[i]) {
+					subDict[JEQL.Class.parameters] = args[i].parameters;
+				}
+                queries.push(subDict);
                 renders.push(JEQL.expandRender(args[i].render));
             }
         } else {
-            queries.push(args.query);
+			var subDict = {};
+			subDict[JEQL.Class.query] = args.query;
+			if (JEQL.Class.echo in args) {
+				subDict[JEQL.Class.echo] = args.echo;
+			}
+			if (JEQL.Class.parameters in args) {
+				subDict[JEQL.Class.parameters] = args.parameters;
+			}
+			if (JEQL.Class.error in args) {
+				errorHandler = args.error;
+			}
+            queries.push(subDict);
             renders.push(JEQL.expandRender(args.render));
             if ('async' in args) {
                 runAsync = args.async;
             }
         }
+		
+		if (errorHandler === undefined) {
+			errorHandler = defaultErrorHandler;
+		}
 
-        queryFunction(container, queries, renders, runAsync);
+        queryFunction(container, queries, renders, errorHandler, runAsync);
     },
 	
-	login: function (username, password) {
+	login: function (username, password, callback = window.location.replace) {
 		var request = (
             window.XMLHttpRequest
             ? new XMLHttpRequest()
@@ -1186,7 +1279,7 @@ const JEQL = {
             if (request.readyState === JEQL.HTTP.readyState.done) {
                 if (request.status === JEQL.HTTP.status.ok) {
                     window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey] = request.responseText;
-					window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.root));
+					callback(JEQL.helpers.formatFromUrl(JEQL.pages.root));
                 } else {
                     JEQL.halt(
                         "Request completed but not OK: status was " +
