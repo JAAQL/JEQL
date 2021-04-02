@@ -40,7 +40,7 @@ const JEQL = {
         "delete": "delete",
         echo: "echo",
         edit: "edit",
-		error: "error",
+        error: "error",
         empty: "empty",
         grid: "grid",
         legend: "legend",
@@ -81,16 +81,16 @@ const JEQL = {
         readyState: {
             done: 4
         },
-		sessionStorage: {
-			jaaqlKey: 'jaaql_key'
-		},
+        sessionStorage: {
+            jaaqlKey: 'jaaql_key'
+        },
         status: {
             ok: 200,
-			unauthorized: 401,
+            unauthorized: 401,
             notFound: 404
         },
         requestHeader: {
-			authorization: "authorization_key",
+            authorization: "authorization_key",
             contentType: "Content-Type",
             JSON: "application/json",
             JSON_UTF8: "application/json; charset=UTF-8",
@@ -124,33 +124,33 @@ const JEQL = {
         memberGlyph: ".",
         URIQueryGlyph: "?"
     },
-	
-	helpers: {
-		encodePostBody: function(input) {
-			var ret = "";
-			var first = true;
-			for (var key in input) {
-				if (!first) { ret += "&"; }
-				ret += key + "=" + encodeURIComponent(input[key]);
-				first = false;
-			}
-			return ret;
-		},
-		formatFromUrl: function(newUrl) {
-			var url = "";
-			for (var i = 0; i < window.location.href.split("/").length - 1; i ++) {
-				if (i !== 0) { url += "/"; }
-				url += window.location.href.split("/")[i];
-			}
-			url += "/" + newUrl;
-			return url;
-		}
-	},
-	
-	endpoints: {
-		login: "login",
-		submit: "submit"
-	},
+    
+    helpers: {
+        encodePostBody: function(input) {
+            var ret = "";
+            var first = true;
+            for (var key in input) {
+                if (!first) { ret += "&"; }
+                ret += key + "=" + encodeURIComponent(input[key]);
+                first = false;
+            }
+            return ret;
+        },
+        formatFromUrl: function(newUrl) {
+            var url = "";
+            for (var i = 0; i < window.location.href.split("/").length - 1; i ++) {
+                if (i !== 0) { url += "/"; }
+                url += window.location.href.split("/")[i];
+            }
+            url += "/" + newUrl;
+            return url;
+        }
+    },
+    
+    endpoints: {
+        login: "login",
+        submit: "submit"
+    },
 
     log: function (logElement, msg) {
         if (logElement) {
@@ -158,11 +158,11 @@ const JEQL = {
         }
         console.log(msg);
     },
-	
-	pages: {
-		login: false,
-		root: "index.html"
-	},
+    
+    pages: {
+        login: false,
+        root: "index.html"
+    },
 
     debug: function (args) {
         JEQL.settings.debug = true;
@@ -394,24 +394,24 @@ const JEQL = {
     },
 
     init: function () {
-		if (!JEQL.pages.login || window.location.href !== JEQL.helpers.formatFromUrl(JEQL.pages.login)) {
-			if (!(JEQL.HTTP.sessionStorage.jaaqlKey in window.sessionStorage)) {
-				if (JEQL.pages.login) {
-					window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
-				} else {
-					window.addEventListener('DOMContentLoaded', JEQL.showLoginModal, false);
-					return;
-				}
-			} else {
-				// TODO swap this out for a login checker
-				JEQL.submit({
-					"query": "SELECT version()",
-					"render": function() {},
-					"async": false
-				});
-			}
-		}
-		
+        if (!JEQL.pages.login || window.location.href !== JEQL.helpers.formatFromUrl(JEQL.pages.login)) {
+            if (!(JEQL.HTTP.sessionStorage.jaaqlKey in window.sessionStorage)) {
+                if (JEQL.pages.login) {
+                    window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+                } else {
+                    window.addEventListener('DOMContentLoaded', JEQL.showLoginModal, false);
+                    return;
+                }
+            } else {
+                // TODO swap this out for a login checker
+                JEQL.submit({
+                    "query": "SELECT version()",
+                    "render": function() {},
+                    "async": false
+                });
+            }
+        }
+        
         const href = window.location.href;
         const questionMark = href.indexOf(JEQL.settings.URIQueryGlyph);
         const uriData = (
@@ -934,51 +934,51 @@ const JEQL = {
             );
         }
     },
-	
-	showLoginModal: function () {
-		if (document.getElementById("jeql__login_div")) { return; }
-		var loginDiv = document.createElement("div");
-		loginDiv.setAttribute("id", "jeql__login_div");
-		document.body.appendChild(loginDiv);
-		loginDiv.setAttribute("class", "login-modal-container");
+    
+    showLoginModal: function () {
+        if (document.getElementById("jeql__login_div")) { return; }
+        var loginDiv = document.createElement("div");
+        loginDiv.setAttribute("id", "jeql__login_div");
+        document.body.appendChild(loginDiv);
+        loginDiv.setAttribute("class", "login-modal-container");
 
-		var sub = document.createElement("div");
-		loginDiv.appendChild(sub);
-		sub.setAttribute("class", "login-modal");
-		
-		var h1 = document.createElement("h1");
-		sub.appendChild(h1);
-		h1.innerHTML = "Login to Your Account";
-		
-		var input = document.createElement("input");
-		sub.appendChild(input);
-		input.setAttribute("type", "text");
-		input.setAttribute("name", "jaaql_user");
-		input.setAttribute("size", "10");
-		input.setAttribute("id", "jaaql_user");
-		input.setAttribute("placeholder", "Username");
-		
-		input = document.createElement("input");
-		sub.appendChild(input);
-		input.setAttribute("type", "password");
-		input.setAttribute("name", "jaaql_pass");
-		input.setAttribute("size", "10");
-		input.setAttribute("id", "jaaql_pass");
-		input.setAttribute("placeholder", "Password");
-		
-		var but = document.createElement("button");
-		sub.appendChild(but);
-		but.setAttribute("name", "login");
-		but.innerHTML = "Login";
-		but.onclick = function() {
-			JEQL.login(document.getElementById("jaaql_user").value, document.getElementById("jaaql_pass").value, function(rootUrl) { window.location.reload() });
-		}
-		
-		setTimeout(function() {
-			var div = document.getElementById("jeql__login_div");
-			div.style.opacity = 1.0;
-		}, 200);
-	},
+        var sub = document.createElement("div");
+        loginDiv.appendChild(sub);
+        sub.setAttribute("class", "login-modal");
+        
+        var h1 = document.createElement("h1");
+        sub.appendChild(h1);
+        h1.innerHTML = "Login to Your Account";
+        
+        var input = document.createElement("input");
+        sub.appendChild(input);
+        input.setAttribute("type", "text");
+        input.setAttribute("name", "jaaql_user");
+        input.setAttribute("size", "10");
+        input.setAttribute("id", "jaaql_user");
+        input.setAttribute("placeholder", "Username");
+        
+        input = document.createElement("input");
+        sub.appendChild(input);
+        input.setAttribute("type", "password");
+        input.setAttribute("name", "jaaql_pass");
+        input.setAttribute("size", "10");
+        input.setAttribute("id", "jaaql_pass");
+        input.setAttribute("placeholder", "Password");
+        
+        var but = document.createElement("button");
+        sub.appendChild(but);
+        but.setAttribute("name", "login");
+        but.innerHTML = "Login";
+        but.onclick = function() {
+            JEQL.login(document.getElementById("jaaql_user").value, document.getElementById("jaaql_pass").value, function(rootUrl) { window.location.reload() });
+        }
+        
+        setTimeout(function() {
+            var div = document.getElementById("jeql__login_div");
+            div.style.opacity = 1.0;
+        }, 200);
+    },
 
     get: function (container, queries, renders, errHandler, runAsync = true) {
         var request = (
@@ -1012,14 +1012,14 @@ const JEQL = {
                         );
                     }
                 } else if (request.status === JEQL.HTTP.status.unauthorized) {
-					if (JEQL.pages.login) {
-						window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
-					} else {
-						JEQL.showLoginModal();
-						return;
-					}
-				} else {
-					errHandler(request.status, request.responseText, "Request completed but not OK: status was " +
+                    if (JEQL.pages.login) {
+                        window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+                    } else {
+                        JEQL.showLoginModal();
+                        return;
+                    }
+                } else {
+                    errHandler(request.status, request.responseText, "Request completed but not OK: status was " +
                         request.status + ", response was '" +
                         request.responseText + "'");
                 }
@@ -1031,7 +1031,7 @@ const JEQL = {
             JEQL.HTTP.requestHeader.contentType,
             JEQL.HTTP.requestHeader.JSON
         );
-		request.setRequestHeader(
+        request.setRequestHeader(
             JEQL.HTTP.requestHeader.authorization,
             window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey]
         );
@@ -1076,8 +1076,8 @@ const JEQL = {
 
         var queries = [];
         var renders = [];
-		var errHandlers = [];
-		var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
+        var errHandlers = [];
+        var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
 
         var i = 0;
 
@@ -1095,15 +1095,15 @@ const JEQL = {
         } else {
             queries.push(args.query);
             renders.push(JEQL.expandRender(args.render));
-			if (JEQL.Class.error in args) {
-				errorHandler = args.error;
-			}
+            if (JEQL.Class.error in args) {
+                errorHandler = args.error;
+            }
         }
-		
-		if (errorHandler === undefined) {
-			errorHandler = defaultErrorHandler;
-		}
-		
+        
+        if (errorHandler === undefined) {
+            errorHandler = defaultErrorHandler;
+        }
+        
         queryFunction(container, queries, renders, errorHandler);
     },
 
@@ -1205,8 +1205,8 @@ const JEQL = {
         var queries = [];
         var renders = [];
         var i = 0;
-		
-		var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
+        
+        var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
 
         JEQL.trace(
             "submit(" + container.tagName +
@@ -1216,45 +1216,45 @@ const JEQL = {
         var runAsync = true;
         if (Array.isArray(args)) {
             for (i = 0; i < args.length; i += 1) {
-				var subDict = {};
-				subDict[JEQL.Class.query] = args[i].query;
-				if (JEQL.Class.echo in args[i]) {
-					subDict[JEQL.Class.echo] = args[i].echo;
-				}
-				if (JEQL.Class.parameters in args[i]) {
-					subDict[JEQL.Class.parameters] = args[i].parameters;
-				}
+                var subDict = {};
+                subDict[JEQL.Class.query] = args[i].query;
+                if (JEQL.Class.echo in args[i]) {
+                    subDict[JEQL.Class.echo] = args[i].echo;
+                }
+                if (JEQL.Class.parameters in args[i]) {
+                    subDict[JEQL.Class.parameters] = args[i].parameters;
+                }
                 queries.push(subDict);
                 renders.push(JEQL.expandRender(args[i].render));
             }
         } else {
-			var subDict = {};
-			subDict[JEQL.Class.query] = args.query;
-			if (JEQL.Class.echo in args) {
-				subDict[JEQL.Class.echo] = args.echo;
-			}
-			if (JEQL.Class.parameters in args) {
-				subDict[JEQL.Class.parameters] = args.parameters;
-			}
-			if (JEQL.Class.error in args) {
-				errorHandler = args.error;
-			}
+            var subDict = {};
+            subDict[JEQL.Class.query] = args.query;
+            if (JEQL.Class.echo in args) {
+                subDict[JEQL.Class.echo] = args.echo;
+            }
+            if (JEQL.Class.parameters in args) {
+                subDict[JEQL.Class.parameters] = args.parameters;
+            }
+            if (JEQL.Class.error in args) {
+                errorHandler = args.error;
+            }
             queries.push(subDict);
             renders.push(JEQL.expandRender(args.render));
             if ('async' in args) {
                 runAsync = args.async;
             }
         }
-		
-		if (errorHandler === undefined) {
-			errorHandler = defaultErrorHandler;
-		}
+        
+        if (errorHandler === undefined) {
+            errorHandler = defaultErrorHandler;
+        }
 
         queryFunction(container, queries, renders, errorHandler, runAsync);
     },
-	
-	login: function (username, password, callback = window.location.replace) {
-		var request = (
+    
+    login: function (username, password, callback = window.location.replace) {
+        var request = (
             window.XMLHttpRequest
             ? new XMLHttpRequest()
             : new ActiveXObject("Microsoft.XMLHTTP")
@@ -1266,11 +1266,11 @@ const JEQL = {
 
         request.withCredentials = false;
         request.onerror = function () {
-			if (this.status === 401) {
-				alert("Incorrect Credentials!"); // TODO spice me up!
-			} else {
-				alert("Could not login: " + request.responseText);
-			}
+            if (this.status === 401) {
+                alert("Incorrect Credentials!"); // TODO spice me up!
+            } else {
+                alert("Could not login: " + request.responseText);
+            }
             JEQL.halt("Request failed!");
         };
         request.onreadystatechange = function () {
@@ -1279,7 +1279,7 @@ const JEQL = {
             if (request.readyState === JEQL.HTTP.readyState.done) {
                 if (request.status === JEQL.HTTP.status.ok) {
                     window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey] = request.responseText;
-					callback(JEQL.helpers.formatFromUrl(JEQL.pages.root));
+                    callback(JEQL.helpers.formatFromUrl(JEQL.pages.root));
                 } else {
                     JEQL.halt(
                         "Request completed but not OK: status was " +
@@ -1288,9 +1288,9 @@ const JEQL = {
                     );
                 }
             }
-		}
-		
-		request.open("POST", JEQL.settings.endpoint + JEQL.endpoints.login, false);
+        }
+        
+        request.open("POST", JEQL.settings.endpoint + JEQL.endpoints.login, false);
         request.setRequestHeader(
             JEQL.HTTP.requestHeader.contentType,
             JEQL.HTTP.requestHeader.FORM
@@ -1300,6 +1300,6 @@ const JEQL = {
         } catch (e) {
             JEQL.halt("Failed to send request: " + e.toString());
         }
-	}
+    }
 };
 JEQL.init();
