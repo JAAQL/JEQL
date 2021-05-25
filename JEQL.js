@@ -28,23 +28,34 @@
     trace, trigger, tuesday, type, unset, unshift, using, value, viewport,
     wednesday, withCredentials, zero, zeroOrOne
 */
+
+
 const JEQL = {
     Name: "JEQL",
     Class: {
         add: "add",
         "button": "button",
         caption: "caption",
+		collate: "collate",
+        columns: "columns",
         cover: "cover",
         "delete": "delete",
+        echo: "echo",
         edit: "edit",
+        error: "error",
         empty: "empty",
         grid: "grid",
         legend: "legend",
         missing: "missing",
         operations: "operations",
+        parameters: "parameters",
+		pivot: "pivot",
         popup: "popup",
         query: "query",
+        render: "render",
+        rows: "rows",
         table: "table",
+		tuples: "tuples",
         value: "value",
         viewport: "viewport"
     },
@@ -76,14 +87,20 @@ const JEQL = {
         readyState: {
             done: 4
         },
+        sessionStorage: {
+            jaaqlKey: 'jaaql_key'
+        },
         status: {
             ok: 200,
+            unauthorized: 401,
             notFound: 404
         },
         requestHeader: {
+            authorization: "authorization_key",
             contentType: "Content-Type",
             JSON: "application/json",
-            JSON_UTF8: "application/json; charset=UTF-8"
+            JSON_UTF8: "application/json; charset=UTF-8",
+            FORM: "application/x-www-form-urlencoded"
         }
     },
     Anatomy: {
@@ -103,7 +120,7 @@ const JEQL = {
     settings: {
         debug: false,
         debugCall: false,
-        endpoint: "http://185.78.198.89:6060/database",
+        endpoint: "http://localhost:6060/",
         fakeData: false,
         eventHandlers: [],
         iterationLimit: 100,
@@ -113,12 +130,44 @@ const JEQL = {
         memberGlyph: ".",
         URIQueryGlyph: "?"
     },
+    
+    helpers: {
+        encodePostBody: function(input) {
+            var ret = "";
+            var first = true;
+            for (var key in input) {
+                if (!first) { ret += "&"; }
+                ret += key + "=" + encodeURIComponent(input[key]);
+                first = false;
+            }
+            return ret;
+        },
+        formatFromUrl: function(newUrl) {
+            var url = "";
+            for (var i = 0; i < window.location.href.split("/").length - 1; i ++) {
+                if (i !== 0) { url += "/"; }
+                url += window.location.href.split("/")[i];
+            }
+            url += "/" + newUrl;
+            return url;
+        }
+    },
+    
+    endpoints: {
+        login: "login",
+        submit: "submit"
+    },
 
     log: function (logElement, msg) {
         if (logElement) {
             logElement.innerHTML += "<br>" + msg;
         }
         console.log(msg);
+    },
+    
+    pages: {
+        login: false,
+        root: "index.html"
     },
 
     debug: function (args) {
@@ -351,6 +400,24 @@ const JEQL = {
     },
 
     init: function () {
+        if (!JEQL.pages.login || window.location.href !== JEQL.helpers.formatFromUrl(JEQL.pages.login)) {
+            if (!(JEQL.HTTP.sessionStorage.jaaqlKey in window.sessionStorage)) {
+                if (JEQL.pages.login) {
+                    window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+                } else {
+                    window.addEventListener('DOMContentLoaded', JEQL.showLoginModal, false);
+                    return;
+                }
+            } else {
+                // TODO swap this out for a login checker
+                JEQL.submit({
+                    "query": "SELECT version()",
+                    "render": function() {},
+                    "async": false
+                });
+            }
+        }
+        
         const href = window.location.href;
         const questionMark = href.indexOf(JEQL.settings.URIQueryGlyph);
         const uriData = (
@@ -855,7 +922,7 @@ const JEQL = {
         return result;
     },
 
-    fake: function (container, queries, renders) {
+    fake: function (container, queries, renders, tuples, pivots, errHandlers, runAsync = true) {
         var i = 0;
 
         JEQL.trace(
@@ -873,8 +940,302 @@ const JEQL = {
             );
         }
     },
+    
+    showLoginModal: function () {
+        if (document.getElementById("jeql__login_div")) { return; }
+        var loginDiv = document.createElement("div");
+        loginDiv.setAttribute("id", "jeql__login_div");
+        document.body.appendChild(loginDiv);
+        loginDiv.setAttribute("class", "login-modal-container");
 
-    get: function (container, queries, renders, runAsync = true) {
+        var sub = document.createElement("div");
+        loginDiv.appendChild(sub);
+        sub.setAttribute("class", "login-modal");
+        
+        var h1 = document.createElement("h1");
+        sub.appendChild(h1);
+        h1.innerHTML = "Login to Your Account";
+        
+        var input = document.createElement("input");
+        sub.appendChild(input);
+        input.setAttribute("type", "text");
+        input.setAttribute("name", "jaaql_user");
+        input.setAttribute("size", "10");
+        input.setAttribute("id", "jaaql_user");
+        input.setAttribute("placeholder", "Username");
+        
+        input = document.createElement("input");
+        sub.appendChild(input);
+        input.setAttribute("type", "password");
+        input.setAttribute("name", "jaaql_pass");
+        input.setAttribute("size", "10");
+        input.setAttribute("id", "jaaql_pass");
+        input.setAttribute("placeholder", "Password");
+        
+        var but = document.createElement("button");
+        sub.appendChild(but);
+        but.setAttribute("name", "login");
+        but.innerHTML = "Login";
+        but.onclick = function() {
+            JEQL.login(document.getElementById("jaaql_user").value, document.getElementById("jaaql_pass").value, function(rootUrl) { window.location.reload() });
+        }
+        
+        setTimeout(function() {
+            var div = document.getElementById("jeql__login_div");
+            div.style.opacity = 1.0;
+        }, 200);
+    },
+	
+	copySub: function(response, pivot, index) {
+		var ret = [];
+		
+		var cur = 0;
+		for (key in response) {
+			if (cur < index) {
+				cur[key] = response[key];
+			}
+			cur ++;
+		}
+		
+		ret[pivot] = [];
+	},
+	
+	copySubAfter: function(response, pivot, index) {
+		var ret = [];
+		
+		var cur = 0;
+		for (key in response) {
+			if (cur < index) {
+				cur[key] = response[key];
+			}
+			cur ++;
+		}
+		
+		ret[pivot] = [];
+	},
+	
+	genCurrRowFill: function(addRow, readRow, pivot, columns) {
+		var lastColIdx = -1;
+		var rows = [];
+		addRow.push(rows);
+		var lastRowSlice = rows;
+		var rowsStack = [];
+		for (var key in pivot) {
+			var column = pivot[key];
+			
+			var curColIdx = columns.indexOf(column);
+			var columnSlice = null;
+			if (lastColIdx === -1) {
+				columnSlice = readRow.slice(0, curColIdx);
+			} else {
+				columnSlice = readRow.slice(lastColIdx, curColIdx);
+			}
+			
+			for (var col in columnSlice) {
+				lastRowSlice.push(columnSlice[col]);
+			}
+			
+			var newContainer = [];
+			var newArr = [];
+			newContainer.push(newArr);
+			var allNull = true;
+			for (var col in lastRowSlice) {
+				if (lastRowSlice[col] !== null) {
+					allNull = false;
+				}
+			}
+			if (!allNull) {
+				lastRowSlice.push(newContainer);
+			} else {
+				while (lastRowSlice.length !== 0) {
+					lastRowSlice.pop();
+				}
+				rowsStack[rowsStack.length - 1].pop();
+			}
+			rowsStack.push(newContainer);
+			lastRowSlice = newArr;
+			lastColIdx = curColIdx;
+		}
+		if (lastColIdx === -1) {
+			columnSlice = readRow.slice(0, curColIdx);
+		} else {
+			columnSlice = readRow.slice(lastColIdx, columns.length);
+		}
+		
+		var allNull = true;
+		for (var col in columnSlice) {
+			if (columnSlice[col] !== null) {
+				if (Array.isArray(columnSlice[col]) && columnSlice[col].length == 0) {
+					
+				} else {
+					allNull = false;
+				}
+			}
+			lastRowSlice.push(columnSlice[col]);
+		}
+		if (allNull) {
+			if (rowsStack.length !== 0) {
+				if (rowsStack[rowsStack.length - 1].length !== 0) {
+					rowsStack[rowsStack.length - 1].pop();
+				}
+			}
+		}
+		
+		return rowsStack;
+	},
+
+	pivotData: function(response, pivot) {
+		var columns = response[JEQL.Class.columns];
+		var rows = response[JEQL.Class.rows];
+		var collapsedColumns = [];
+		var collapsedRows = [];
+		
+		if (pivot.constructor != Object) {
+			JEQL.halt("Pivot must be of type dictionary e.g. { pivot_name: pivoted_column }");
+		}
+
+		var lastColIdx = -1;
+		var lastColumnSlice = collapsedColumns;
+		
+		for (var key in pivot) {
+			if (key.constructor != String) {
+				JEQL.halt("Pivot keys must be strings e.g. { pivot_name: pivoted_column }");
+			}
+			var column = pivot[key];
+			
+			var curColIdx = columns.indexOf(column);
+			if (curColIdx === -1) {
+				JEQL.halt("Could not find column '" + column + "' in returned columns. Please choose one of " + columns);
+			} else if (lastColIdx > curColIdx) {
+				JEQL.halt("Found column '" + columns[curColIdx] + "' further in the array from '" + columns[lastColIdx] + "'. Please supply columns for pivot with relative rankings matching " + columns);
+			} else if (curColIdx === lastColIdx) {
+				JEQL.halt("Found column '" + columns[curColIdx] + "' duplicated in pivot");
+			}
+						
+			var columnSlice = null;
+			if (lastColIdx === -1) {
+				columnSlice = columns.slice(0, curColIdx);
+			} else {
+				columnSlice = columns.slice(lastColIdx, curColIdx);
+			}
+			
+			for (var col in columnSlice) {
+				lastColumnSlice.push(columnSlice[col]);
+			}
+			
+			var newArr = [];
+			var ins = {};
+			ins[key] = newArr;
+			lastColumnSlice.push(ins);
+			lastColumnSlice = newArr;
+			lastColIdx = curColIdx;
+		}
+		
+		if (lastColIdx === -1) {
+			columnSlice = columns.slice(0, curColIdx);
+		} else {
+			columnSlice = columns.slice(lastColIdx, columns.length);
+		}
+		
+		for (var col in columnSlice) {
+			lastColumnSlice.push(columnSlice[col]);
+		}
+		
+		
+		var rowKeyStack = [];
+		var curRowStack = [collapsedRows];
+
+		for (var row in rows) {
+			var rawRow = rows[row];
+
+			var popNum = 0;
+			
+			for (var i = rowKeyStack.length - 1; i > -1; i --) {
+				var curKey = rowKeyStack[i];
+				var colCheckFromIdx = curKey[0];
+				var colCheckToIdx = curKey[1];
+				var colCheckVal = curKey[2];
+				
+				var sliced = rawRow.slice(colCheckFromIdx, colCheckToIdx);
+				var arrEq = true;
+				for (var j = 0; j < sliced.length; j ++) {
+					if (sliced[j] !== colCheckVal[j]) {
+						arrEq = false;
+						break;
+					}
+				}
+				
+				if (!arrEq) {
+					popNum = rowKeyStack.length - i;
+				}
+			}
+			for (var i = 0; i < popNum; i ++) {
+				rowKeyStack.pop();
+				curRowStack.pop();
+			}
+			
+			var fillFrom = 0;
+			if (rowKeyStack.length !== 0) {
+				fillFrom = rowKeyStack[rowKeyStack.length - 1][1];
+			}
+			
+			var keyArr = [];
+			var curKey = {};
+			var count = 1;
+			for (var key in pivot) {
+				if (count > rowKeyStack.length) {
+					curKey[key] = pivot[key];
+					keyArr.push(key);
+				}
+				count++;
+			}
+			
+			var rowStack = JEQL.genCurrRowFill(curRowStack[curRowStack.length - 1], rawRow.slice(fillFrom, rawRow.length), curKey, columns.slice(fillFrom, rawRow.length));
+			for (var i = 0; i < rowStack.length; i ++) {
+				curRowStack.push(rowStack[i]);
+				var curRowKey = [];
+				var curColIdx = 0;
+				if (i > 0) {
+					curColIdx = columns.indexOf(pivot[keyArr[i - 1]]);
+				}
+				var colToIdx = columns.indexOf(pivot[keyArr[i]]);
+				rowKeyStack.push([curColIdx, colToIdx, rawRow.slice(curColIdx, colToIdx)]);
+			}
+		}
+
+		var retArr = {};
+		retArr[JEQL.Class.columns] = collapsedColumns;
+		retArr[JEQL.Class.rows] = collapsedRows;
+		return retArr;
+	},
+
+    tuplesToObjects: function(response) {
+        var columns = response[JEQL.Class.columns];
+        var rows = response[JEQL.Class.rows];
+        
+        var ret = [];
+        
+        for (var i = 0; i < rows.length; i ++) {
+            var obj = {};
+            for (var i2 = 0; i2 < columns.length; i2 ++) {
+				if (columns[i2].constructor == Object) {
+					var objKey = Object.keys(columns[i2])[0];
+					var subResponse = {};
+					subResponse[JEQL.Class.columns] = columns[i2][objKey];
+					subResponse[JEQL.Class.rows] = rows[i][i2];
+
+					obj[objKey] = JEQL.tuplesToObjects(subResponse);
+				} else {
+					obj[columns[i2]] = rows[i][i2];
+				}
+            }
+            ret.push(obj);
+        }
+
+        return ret;
+    },
+
+    get: function (container, queries, renders, tuples, pivots, errHandler, runAsync = true) {
         var request = (
             window.XMLHttpRequest
             ? new XMLHttpRequest()
@@ -899,26 +1260,45 @@ const JEQL = {
                 if (request.status === JEQL.HTTP.status.ok) {
                     response = JSON.parse(request.responseText);
                     for (i = 0; i < renders.length; i += 1) {
+						var transformed = response[i];
+
+						if (pivots[i]) {
+							transformed = JEQL.pivotData(transformed, pivots[i]);
+						}
+
+						if (!tuples[i]) {
+							transformed = JEQL.tuplesToObjects(transformed);
+						}
+						
                         renders[i].using(
                             container,
                             renders[i],
-                            response[i]
+                            transformed
                         );
                     }
+                } else if (request.status === JEQL.HTTP.status.unauthorized) {
+                    if (JEQL.pages.login) {
+                        window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
+                    } else {
+                        JEQL.showLoginModal();
+                        return;
+                    }
                 } else {
-                    JEQL.halt(
-                        "Request completed but not OK: status was " +
+                    errHandler(request.status, request.responseText, "Request completed but not OK: status was " +
                         request.status + ", response was '" +
-                        request.responseText + "'"
-                    );
+                        request.responseText + "'");
                 }
             }
         };
 
-        request.open("POST", JEQL.settings.endpoint, runAsync);
+        request.open("POST", JEQL.settings.endpoint + JEQL.endpoints.submit, runAsync);
         request.setRequestHeader(
             JEQL.HTTP.requestHeader.contentType,
             JEQL.HTTP.requestHeader.JSON
+        );
+        request.setRequestHeader(
+            JEQL.HTTP.requestHeader.authorization,
+            window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey]
         );
         try {
             request.send(JSON.stringify(queries));
@@ -941,7 +1321,7 @@ const JEQL = {
     *    If, for whatever reason, we are unable to find the last script element
     *    we'll append the set of named elements to the body of the document
     **/
-    load: function (args) {
+    load: function (args, errorHandler = undefined) {
         const scriptElements = document.getElementsByTagName(JEQL.DOM.script);
         const lastScriptElement = (
             (scriptElements && scriptElements.length)
@@ -958,8 +1338,14 @@ const JEQL = {
             ? JEQL.fake
             : JEQL.get
         );
+
         var queries = [];
         var renders = [];
+        var tuples = [];
+		var pivots = [];
+        var errHandlers = [];
+        var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
+
         var i = 0;
 
         JEQL.trace(
@@ -971,13 +1357,54 @@ const JEQL = {
         if (Array.isArray(args)) {
             for (i = 0; i < args.length; i += 1) {
                 queries.push(args[i].query);
-                renders.push(JEQL.expandRender(args[i].render));
+                
+                if (JEQL.Class.tuples in args[i]) {
+                    tuples.push(args[i].tuples);
+                } else {
+					tuples.push(false);
+				}
+                if (JEQL.Class.render in args[i]) {
+                    renders.push(JEQL.expandRender(args[i].render));
+                } else {
+                    renders.push(JEQL.expandRender(function() {  }));
+                }
+				
+				if (JEQL.Class.pivot in args[i]) {
+					pivots.push(args[i].pivot);
+				} else {
+					pivots.push(false);
+				}
             }
         } else {
             queries.push(args.query);
-            renders.push(JEQL.expandRender(args.render));
+
+            if (JEQL.Class.tuples in args) {
+                tuples.push(args.tuples);
+            } else {
+				tuples.push(false);
+			}
+            if (JEQL.Class.render in args) {
+                renders.push(JEQL.expandRender(args.render));
+            } else {
+                renders.push(JEQL.expandRender(function() {  }));
+            }
+			
+			if (JEQL.Class.pivot in args) {
+				pivots.push(args.pivot);
+			} else {
+				pivots.push(false);
+			}
+			
+            if (JEQL.Class.error in args) {
+                errorHandler = args.error;
+            }
         }
-        queryFunction(container, queries, renders);
+        
+        if (errorHandler === undefined) {
+            errorHandler = defaultErrorHandler;
+        }
+        
+        queryFunction(container, queries, renders, tuples, pivots, errorHandler);
     },
 
     handleEvent: function (e) {
@@ -1057,7 +1484,7 @@ const JEQL = {
         });
     },
     
-    submit: function (args) {
+    submit: function (args, errorHandler = undefined) {
         const scriptElements = document.getElementsByTagName(JEQL.DOM.script);
         const lastScriptElement = (
             (scriptElements && scriptElements.length)
@@ -1077,7 +1504,11 @@ const JEQL = {
         );
         var queries = [];
         var renders = [];
+        var tuples = [];
+		var pivots = [];
         var i = 0;
+        
+        var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
 
         JEQL.trace(
             "submit(" + container.tagName +
@@ -1087,18 +1518,123 @@ const JEQL = {
         var runAsync = true;
         if (Array.isArray(args)) {
             for (i = 0; i < args.length; i += 1) {
-                queries.push(args[i].query);
-                renders.push(JEQL.expandRender(args[i].render));
+                var subDict = {};
+                subDict[JEQL.Class.query] = args[i].query;
+                if (JEQL.Class.echo in args[i]) {
+                    subDict[JEQL.Class.echo] = args[i].echo;
+                }
+                if (JEQL.Class.parameters in args[i]) {
+                    subDict[JEQL.Class.parameters] = args[i].parameters;
+                }
+                queries.push(subDict);
+
+                if (JEQL.Class.tuples in args[i]) {
+                    tuples.push(args[i].tuples);
+                } else {
+					tuples.push(false);
+				}
+                if (JEQL.Class.render in args[i]) {
+                    renders.push(JEQL.expandRender(args[i].render));
+                } else {
+                    renders.push(JEQL.expandRender(function() {  }));
+                }
+				
+				if (JEQL.Class.pivot in args[i]) {
+					pivots.push(args[i].pivot);
+				} else {
+					pivots.push(false);
+				}
             }
         } else {
-            queries.push(args.query);
-            renders.push(JEQL.expandRender(args.render));
+            var subDict = {};
+            subDict[JEQL.Class.query] = args.query;
+            if (JEQL.Class.echo in args) {
+                subDict[JEQL.Class.echo] = args.echo;
+            }
+            if (JEQL.Class.parameters in args) {
+                subDict[JEQL.Class.parameters] = args.parameters;
+            }
+            if (JEQL.Class.error in args) {
+                errorHandler = args.error;
+            }
+            queries.push(subDict);
+            
+            if (JEQL.Class.tuples in args) {
+                tuples.push(args.tuples);
+            } else {
+				tuples.push(false);
+			}
+            if (JEQL.Class.render in args) {
+                renders.push(JEQL.expandRender(args.render));
+            } else {
+                renders.push(JEQL.expandRender(function() {  }));
+            }
+			
+			if (JEQL.Class.pivot in args) {
+				pivots.push(args.pivot);
+			} else {
+				pivots.push(false);
+			}
+
             if ('async' in args) {
                 runAsync = args.async;
             }
         }
+        
+        if (errorHandler === undefined) {
+            errorHandler = defaultErrorHandler;
+        }
 
-        queryFunction(container, queries, renders, runAsync);
+        queryFunction(container, queries, renders, tuples, pivots, errorHandler, runAsync);
+    },
+    
+    login: function (username, password, callback = window.location.replace) {
+        var request = (
+            window.XMLHttpRequest
+            ? new XMLHttpRequest()
+            : new ActiveXObject("Microsoft.XMLHTTP")
+        );
+
+        JEQL.trace(
+            "login(" + username + ", ...)"
+        );
+
+        request.withCredentials = false;
+        request.onerror = function () {
+            if (this.status === 401) {
+                alert("Incorrect Credentials!"); // TODO spice me up!
+            } else {
+                alert("Could not login: " + request.responseText);
+            }
+            JEQL.halt("Request failed!");
+        };
+        request.onreadystatechange = function () {
+            var i = 0;
+            var response;
+            if (request.readyState === JEQL.HTTP.readyState.done) {
+                if (request.status === JEQL.HTTP.status.ok) {
+                    window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey] = request.responseText;
+                    callback(JEQL.helpers.formatFromUrl(JEQL.pages.root));
+                } else {
+                    JEQL.halt(
+                        "Request completed but not OK: status was " +
+                        request.status + ", response was '" +
+                        request.responseText + "'"
+                    );
+                }
+            }
+        }
+        
+        request.open("POST", JEQL.settings.endpoint + JEQL.endpoints.login, false);
+        request.setRequestHeader(
+            JEQL.HTTP.requestHeader.contentType,
+            JEQL.HTTP.requestHeader.FORM
+        );
+        try {
+            request.send(JEQL.helpers.encodePostBody({"username": username, "password": password}));
+        } catch (e) {
+            JEQL.halt("Failed to send request: " + e.toString());
+        }
     }
 };
 JEQL.init();
