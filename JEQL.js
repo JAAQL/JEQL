@@ -1,1640 +1,1289 @@
-/*jslint
-    browser, fudge, for
-*/
-/*global
-    ActiveXObject, Array, Error, JEQL, JSON, Object, XMLHttpRequest, console,
-    decodeURIComponent, document, encodeURIComponent, parseInt, window, confirm
-*/
-/*property
-    Anatomy, Assertion, Class, DOM, HTTP, JSON, JSON_UTF8, Lib, Name,
-    URIQueryGlyph, XMLHttpRequest, action, add, addEventListener, appendChild,
-    args, as, assert, assertElement, body, button, call, caption, className,
-    clearElement, colSpan, columns, confirmCalls, contentType, cover,
-    createElement, datatype, days, debug, debugCall, delete, descriptors, done,
-    edit, empty, eventHandlers, eventType, exclude, expandRender, fake,
-    fakeData, fakeResponseText, firstChild, floor, friday, get, getElementById,
-    getElementsByTagName, grid, halt, handleEvent, heading, hideEmptyRows,
-    hideWhenEmpty, href, id, includes, indexCloserGlyph, indexOf,
-    indexOpenerGlyph, indirectionGlyph, init, innerHTML, interpret, isArray,
-    isSimpleObject, isWeekday, isrequired, iterationLimit, keys, legend, length,
-    load, location, log, logElement, matches, memberGlyph, missing, monday,
-    name, nonBreakingSpace, none, notFound, ok, on, one, oneOrMore, onerror,
-    onreadystatechange, open, operations, page, parentElement, parse, perhaps,
-    plural, popup, push, query, random, readyState, removeChild, render,
-    requestHeader, responseText, row, rows, saturday, script, select, selector,
-    send, setRequestHeader, settings, split, src, srcElement, stack, startsWith,
-    status, stringify, substring, sunday, table, tagName, targetCellId,
-    tests_isSimpleObject, tests_isWeekday, tests_plural, thursday, toString,
-    trace, trigger, tuesday, type, unset, unshift, using, value, viewport,
-    wednesday, withCredentials, zero, zeroOrOne
-*/
+import "./css_loader.js"  // Will import the CSS
+import * as requests from "./requests/requests.js"; export {requests}
+let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
+let VERSION = "2.0.0";
+console.log("Loaded JEQL library, version " + VERSION);
 
-const JEQL = {
-    Name: "JEQL",
-    Class: {
-        add: "add",
-        "button": "button",
-        caption: "caption",
-		collate: "collate",
-        columns: "columns",
-        cover: "cover",
-        "delete": "delete",
-        echo: "echo",
-        edit: "edit",
-        error: "error",
-        empty: "empty",
-        grid: "grid",
-        legend: "legend",
-        missing: "missing",
-        operations: "operations",
-        parameters: "parameters",
-		pivot: "pivot",
-        popup: "popup",
-        query: "query",
-        render: "render",
-        rows: "rows",
-        table: "table",
-		tuples: "tuples",
-        value: "value",
-        viewport: "viewport"
-    },
-    DOM: {
-        none: "none",
-        unset: "",
-        script: "script",
-        nonBreakingSpace: "&nbsp;",
-        days: {
-            sunday: 0,
-            monday: 1,
-            tuesday: 2,
-            wednesday: 3,
-            thursday: 4,
-            friday: 5,
-            saturday: 6
-        },
-        assertElement: function (id) {
-            var element = document.getElementById(id);
-            if (!element) {
-                JEQL.halt(
-                    "Expected element with id='" + id + "'; none was found"
-                );
-            }
-            return element;
+let HTTP_STATUS_CONNECTION_EXPIRED = 419;
+let HTTP_STATUS_OK = 200; export {HTTP_STATUS_OK};
+let HTTP_STATUS_ACCEPTED = 202; export {HTTP_STATUS_ACCEPTED};
+
+let STORAGE_JAAQL_TOKENS = "JAAQL_TOKENS";
+let STORAGE_JAAQL_CONFIGS = "JAAQL_CONFIGS";
+
+let JEQL_FIESTA_INTRODUCER = "introducer";
+let JEQL_FIESTA_EXPRESSION = "expression";
+let JEQL_FIESTA_SEPARATOR = "separator";
+let JEQL_FIESTA_TERMINATOR = "terminator";
+let JEQL_FIESTA_ALTERNATIVE = "alternative";
+
+let ACTION_LOGIN = "POST /oauth/token";
+let ACTION_FETCH_APPLICATIONS = "GET /applications";
+let ACTION_INTERNAL_NODES = "GET /internal/nodes"; export {ACTION_INTERNAL_NODES};
+let ACTION_INTERNAL_NODES_ADD = "POST /internal/nodes"; export {ACTION_INTERNAL_NODES_ADD};
+let ACTION_INTERNAL_NODES_DEL = "DELETE /internal/nodes"; export {ACTION_INTERNAL_NODES_DEL};
+let ACTION_INTERNAL_NODES_DELCONF = "POST /internal/nodes/confirm-deletion"; export {ACTION_INTERNAL_NODES_DELCONF};
+let ACTION_INTERNAL_NODE_AUTHS = "GET /internal/nodes/credentials"; export {ACTION_INTERNAL_NODE_AUTHS};
+let ACTION_INTERNAL_NODE_AUTHS_ADD = "POST /internal/nodes/credentials"; export {ACTION_INTERNAL_NODE_AUTHS_ADD};
+let ACTION_INTERNAL_NODE_AUTHS_DEL = "DELETE /internal/nodes/credentials"; export {ACTION_INTERNAL_NODE_AUTHS_DEL};
+let ACTION_INTERNAL_NODE_AUTHS_DELCONF = "POST /internal/nodes/credentials/confirm-deletion"; export {ACTION_INTERNAL_NODE_AUTHS_DELCONF};
+let ACTION_INTERNAL_DATABASES = "GET /internal/databases"; export {ACTION_INTERNAL_DATABASES};
+let ACTION_INTERNAL_DATABASES_ADD = "POST /internal/databases"; export {ACTION_INTERNAL_DATABASES_ADD};
+let ACTION_INTERNAL_DATABASES_DEL = "DELETE /internal/databases"; export {ACTION_INTERNAL_DATABASES_DEL};
+let ACTION_INTERNAL_DATABASES_DELCONF = "POST /internal/databases/confirm-deletion"; export {ACTION_INTERNAL_DATABASES_DELCONF};
+let ACTION_INTERNAL_APPLICATIONS = "GET /internal/applications"; export {ACTION_INTERNAL_APPLICATIONS};
+let ACTION_INTERNAL_APPLICATIONS_ADD = "POST /internal/applications"; export {ACTION_INTERNAL_APPLICATIONS_ADD};
+let ACTION_INTERNAL_APPLICATIONS_DEL = "DELETE /internal/applications"; export {ACTION_INTERNAL_APPLICATIONS_DEL};
+let ACTION_INTERNAL_APPLICATIONS_DELCONF = "POST /internal/applications/confirm-deletion"; export {ACTION_INTERNAL_APPLICATIONS_DELCONF};
+let ACTION_REFRESH = "POST /oauth/refresh";
+let ACTION_SUBMIT = "POST /submit";
+let ACTION_SUBMIT_FILE = "POST /submit-file";
+let ACTION_CONFIGURATIONS = "GET /configurations";
+let ACTION_INTERNAL_ASSIGNED_DATABASES = "GET /internal/applications/configurations/assigned-databases"; export {ACTION_INTERNAL_ASSIGNED_DATABASES};
+let ACTION_INTERNAL_ASSIGNED_DATABASE_ADD = "POST /internal/applications/configurations/assigned-databases"; export {ACTION_INTERNAL_ASSIGNED_DATABASE_ADD};
+let ACTION_INTERNAL_ASSIGNED_DATABASE_DEL = "DELETE /internal/applications/configurations/assigned-databases"; export {ACTION_INTERNAL_ASSIGNED_DATABASE_DEL};
+let ACTION_INTERNAL_ASSIGNED_DATABASE_DELCONF = "POST /internal/applications/configurations/assigned-databases/confirm-deletion"; export {ACTION_INTERNAL_ASSIGNED_DATABASE_DELCONF};
+let ACTION_INTERNAL_CONFIG = "GET /internal/applications/configurations"; export {ACTION_INTERNAL_CONFIG};
+let ACTION_INTERNAL_CONFIG_ADD = "POST /internal/applications/configuration"; export {ACTION_INTERNAL_CONFIG_ADD};
+let ACTION_INTERNAL_CONFIG_DEL = "DELETE /internal/applications/configurations"; export {ACTION_INTERNAL_CONFIG_DEL};
+let ACTION_INTERNAL_CONFIG_DELCONF = "POST /internal/applications/configurations/confirm-deletion"; export {ACTION_INTERNAL_CONFIG_DELCONF};
+let ACTION_INTERNAL_CONFIG_AUTH = "GET /internal/applications/configurations/authorizations"; export {ACTION_INTERNAL_CONFIG_AUTH};
+let ACTION_INTERNAL_CONFIG_AUTH_ADD = "POST /internal/applications/configurations/authorizations"; export {ACTION_INTERNAL_CONFIG_AUTH_ADD};
+let ACTION_INTERNAL_CONFIG_AUTH_DEL = "DELETE /internal/applications/configurations/authorizations"; export {ACTION_INTERNAL_CONFIG_AUTH_DEL};
+let ACTION_INTERNAL_CONFIG_AUTH_DELCONF = "POST /internal/applications/configurations/authorizations/confirm-deletion"; export {ACTION_INTERNAL_CONFIG_AUTH_DELCONF};
+let ACTION_INTERNAL_DATASETS = "GET /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS};
+let ACTION_INTERNAL_DATASETS_ADD = "POST /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS_ADD};
+let ACTION_INTERNAL_DATASETS_DEL = "DELETE /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS_DEL};
+let ACTION_INTERNAL_DATASETS_DELCONF = "POST /internal/applications/datasets/confirm-deletion"; export {ACTION_INTERNAL_DATASETS_DELCONF};
+let ACTION_CONFIGURATIONS_ASSIGNED_DATABASES = "GET /configurations/assigned-databases";
+
+let PARAMETER_JAAQL = "jaaql";
+let PARAMETER_CONFIGURATION = "configuration";
+
+let JWT_KEY_CONFIG_NAME = "name";
+
+let ERR_WIPING_CONFIG = "Error when loading app config, wiping config";
+let ERR_IMPERATIVE_APP_CONFIG_FAILED = "Tried to get app config in an imperative manner yet app config was not set";
+let ERR_NO_FOUND_CONFIGURATION_FOR_USER = "No configuration found for user";
+let ERR_COULD_NOT_REFRESH_APP_CONFIG = "Could not refresh app config connection token";
+let ERR_COULD_NOT_FIND_APPLICATION_WITH_NAME = "Could not find application with name ";
+let ERR_MFA_TIMEOUT_OCCURRED = "MFA timeout hit. Please login again";
+
+let KEY_QUERY = "query";
+let KEY_PARAMETERS = "parameters";
+let KEY_DATASET = "dataset"; export {KEY_DATASET};
+let KEY_NODE = "node"; export {KEY_NODE};
+let KEY_DATABASE = "database"; export {KEY_DATABASE};
+let KEY_FORCE_TRANSACTIONAL = "force_transactional"; export {KEY_FORCE_TRANSACTIONAL};
+let KEY_ROWS = "rows"; export {KEY_ROWS};
+let KEY_COLUMNS = "columns"; export {KEY_COLUMNS};
+let KEY_PORT = "port"; export {KEY_PORT};
+let KEY_ADDRESS = "address"; export {KEY_ADDRESS};
+let KEY_DELETED = "deleted"; export {KEY_DELETED};
+let KEY_CONNECTION = "connection";
+let KEY_USERNAME = "username"; export {KEY_USERNAME};
+let KEY_PASSWORD = "password"; export {KEY_PASSWORD};
+let KEY_MFA_KEY = "mfa_key";
+let KEY_PRE_AUTH_KEY = "pre_auth_key";
+let KEY_CONFIGURATION = "configuration"; export {KEY_CONFIGURATION};
+let KEY_APPLICATION = "application"; export {KEY_APPLICATION};
+let KEY_DESCRIPTION = "description"; export {KEY_DESCRIPTION};
+let KEY_URL = "url"; export {KEY_URL};
+let KEY_ROLE = "role"; export {KEY_ROLE};
+let KEY_PRECEDENCE = "precedence"; export {KEY_PRECEDENCE};
+let KEY_CONNECTIONS = "connections";
+let KEY_NAME = "name"; export {KEY_NAME};
+let KEY_DATA = "data"; export {KEY_DATA};
+let KEY_CREATE = "create"; export {KEY_CREATE};
+let KEY_DROP = "drop"; export {KEY_DROP};
+let KEY_CREATE_USERNAME = "create_username"; export {KEY_CREATE_USERNAME};
+let KEY_RECORDS_TOTAL = "records_total";
+let KEY_RECORDS_FILTERED = "records_filtered";
+let KEY_SEARCH = "search";
+let KEY_SORT = "sort";
+let KEY_SIZE = "size";
+let KEY_PAGE = "page";
+let KEY_DELETION_KEY = "deletion_key";
+
+let PROTOCOL_FILE = "file:";
+let LOCAL_DEBUGGING_URL = "http://127.0.0.1:6060";
+
+let CLS_MODAL_OUTER = "jeql-modal-outer";
+let CLS_MODAL = "jeql-modal"; export {CLS_MODAL};
+let CLS_MODAL_WIDE = "jeql-modal-wide"; export {CLS_MODAL_WIDE};
+let CLS_MODAL_AUTO = "jeql-modal-auto"; export {CLS_MODAL_AUTO};
+let CLS_BUTTON = "jeql-button"; export {CLS_BUTTON};
+let CLS_BUTTON_YES = "jeql-button-yes"; export {CLS_BUTTON_YES};
+let CLS_BUTTON_NO = "jeql-button-no"; export {CLS_BUTTON_NO};
+let CLS_MODAL_CLOSE = "jeql-modal-close";
+let CLS_CURSOR_POINTER = "jeql-cursor-pointer";
+let CLS_CENTER = "jeql-center";
+let CLS_INPUT_MFA = "jeql-input-mfa";
+let CLS_SELECTED_APP_CONFIG = "jeql-selected-app-config";
+let CLS_JEQL_TABLE_HEADER = "jeql-table-header";
+let CLS_JEQL_TABLE_HEADER_SORT = "jeql-table-header-sort";
+let CLS_JEQL_TABLE_HEADER_SORT_SPAN = "jeql-table-header-sort-span";
+
+let SORT_DEFAULT = "&nbsp;-";
+let SORT_ASC = "&nbsp;&#9650;";
+let SORT_DESC = "&nbsp;&#9660;";
+
+let ATTR_JEQL_DATA = "jeql-data";
+let ATTR_JEQL_PAGING_TABLE = "jeql-paging-table";
+let ATTR_JEQL_SORT_DIRECTION = "jeql-sort-direction";
+
+let ID_LOGIN_MODAL = "jeql-login-modal";
+let ID_LOGIN_ERROR = "jeql-login-error";
+let ID_USERNAME = "jeql-username";
+let ID_PASSWORD = "jeql-password";
+let ID_REMEMBER_ME = "jeql-remember-me";
+let ID_MFA_0 = "jeql-mfa-0";
+let ID_MFA_1 = "jeql-mfa-1";
+let ID_MFA_2 = "jeql-mfa-2";
+let ID_MFA_3 = "jeql-mfa-3";
+let ID_MFA_4 = "jeql-mfa-4";
+let ID_MFA_5 = "jeql-mfa-5";
+let ID_LOGIN_BUTTON = "jeql-login-button";
+let ID_SELECT_APP_CONFIG = "jeql-select-app-config-";
+let ID_PAGING_REFRESH_BUTTON = "refresh";
+let ID_PAGING_FILTERED = "filtered";
+let ID_PAGING_TOTAL = "total";
+let ID_PAGING_PAGES = "pages";
+let ID_PAGING_SIZE = "size";
+let ID_PAGING_FROM = "from";
+let ID_PAGING_TO = "to";
+let ID_PAGING_CUR_PAGE = "cur";
+let ID_PAGING_SORT = "sort";
+let ID_PAGING_SEARCH = "search";
+let ID_PAGING_LAST_SEARCH = "last-search";
+
+let CLS_INPUT = "jeql-input";
+
+let AUTH_MFA_EXPIRY_MS = 120000;
+
+export function getSearchObj(page, size, search, sort) {
+    let obj = {};
+    obj[KEY_PAGE] = page;
+    obj[KEY_SIZE] = size;
+    obj[KEY_SEARCH] = search;
+    obj[KEY_SORT] = sort;
+    return obj;
+}
+
+export function modalExists() {
+    return document.body.getElementsByClassName(CLS_MODAL).length !== 0;
+}
+
+export function doConfirmDelete(config, data, actionDel, actionDelConf, onComplete) {
+    requests.makeBody(window.JEQL_CONFIG, actionDel, function(res) {
+        data = {};
+        data[KEY_DELETION_KEY] = res[KEY_DELETION_KEY];
+        requests.makeJson(window.JEQL_CONFIG, actionDelConf, onComplete, data);
+    }, data);
+}
+
+export function simpleSearchTransformer(cols) {
+    return function(search) {
+        if (search === "") { return search; }
+        let simplified = "";
+        for (let i = 0; i < cols.length; i ++) {
+            if (i !== 0) { simplified += " OR "; }
+            simplified += cols[i] + " LIKE '%" + search + "%'"
         }
-    },
-    HTTP: {
-        readyState: {
-            done: 4
-        },
-        sessionStorage: {
-            jaaqlKey: 'jaaql_key'
-        },
-        status: {
-            ok: 200,
-            unauthorized: 401,
-            notFound: 404
-        },
-        requestHeader: {
-            authorization: "authorization_key",
-            contentType: "Content-Type",
-            JSON: "application/json",
-            JSON_UTF8: "application/json; charset=UTF-8",
-            FORM: "application/x-www-form-urlencoded"
-        }
-    },
-    Anatomy: {
-        eventHandlers: "eventHandlers",
-        logElement: "JEQL--log",
-        render: "render",
-        action: "action",
-        exclude: "exclude"
-    },
-    Assertion: {
-        one: 1,
-        zero: 0,
-        zeroOrOne: "0/1",
-        oneOrMore: "1+"
-    },
+        return simplified;
+    }
+}
 
-    settings: {
-        debug: false,
-        debugCall: false,
-        endpoint: "http://localhost:6060/",
-        fakeData: false,
-        eventHandlers: [],
-        iterationLimit: 100,
-        indirectionGlyph: ":",
-        indexOpenerGlyph: "[",
-        indexCloserGlyph: "]",
-        memberGlyph: ".",
-        URIQueryGlyph: "?"
-    },
-    
-    helpers: {
-        encodePostBody: function(input) {
-            var ret = "";
-            var first = true;
-            for (var key in input) {
-                if (!first) { ret += "&"; }
-                ret += key + "=" + encodeURIComponent(input[key]);
-                first = false;
-            }
-            return ret;
-        },
-        formatFromUrl: function(newUrl) {
-            var url = "";
-            for (var i = 0; i < window.location.href.split("/").length - 1; i ++) {
-                if (i !== 0) { url += "/"; }
-                url += window.location.href.split("/")[i];
-            }
-            url += "/" + newUrl;
-            return url;
-        }
-    },
-    
-    endpoints: {
-        login: "login",
-        submit: "submit"
-    },
+export function pagedTableUpdate(table, data) {
+    let tableId = table.id;
+    let refreshId = tableId + "-" + ID_PAGING_REFRESH_BUTTON;
+    let totalId = tableId + "-" + ID_PAGING_TOTAL;
+    let filteredId = tableId + "-" + ID_PAGING_FILTERED;
+    let fromId = tableId + "-" + ID_PAGING_FROM;
+    let toId = tableId + "-" + ID_PAGING_TO;
+    let curPageElem = document.getElementById(tableId + "-" + ID_PAGING_CUR_PAGE);
+    let curPage = parseInt(curPageElem.innerText);
+    let pagesElem = document.getElementById(tableId + "-" + ID_PAGING_PAGES);
+    let pageSize = parseInt(document.getElementById(tableId + "-" + ID_PAGING_SIZE).value);
+    let numPages = Math.ceil(data[KEY_RECORDS_FILTERED] / pageSize);
+    let pageButtonClickFunc = function(event) {
+        curPageElem.innerText = event.target.innerHTML;
+        document.getElementById(refreshId).click();
+    };
 
-    log: function (logElement, msg) {
-        if (logElement) {
-            logElement.innerHTML += "<br>" + msg;
-        }
-        console.log(msg);
-    },
-    
-    pages: {
-        login: false,
-        root: "index.html"
-    },
-
-    debug: function (args) {
-        JEQL.settings.debug = true;
-        JEQL.settings.fakeData = args.fakeData;
-        JEQL.settings.debugCall = args.confirmCalls;
-    },
-
-    trace: function (msg) {
-        var logElement = document.getElementById(JEQL.Anatomy.logElement);
-        if (logElement) {
-            JEQL.log(logElement, msg);
-        } else if (JEQL.settings.debug) {
-            console.log(msg);
-        }
-    },
-
-    halt: function (msg) {
-        var logElement = document.getElementById(JEQL.Anatomy.logElement);
-        if (logElement) {
-            logElement.innerHTML +=
-            "<br><b>HALT!</b>&mdash;<em>" + msg + "<em><pre>" +
-            new Error().stack + "</pre>";
-        }
-        console.log(new Error("HALT -- " + msg));
-        throw msg;
-    },
-
-    assert: function (name, value) {
-        if (!value) {
-            JEQL.halt("Must specify a value for '" + name + "'!");
-        }
-    },
-
-    Lib: {
-        Name: "JEQL.Lib",
-        isSimpleObject: function (arg) {
-            return (
-                Boolean(arg) &&
-                typeof arg === "object" &&
-                !Array.isArray(arg)
-            );
-        },
-        tests_isSimpleObject: [
-            {args: [undefined], assert: false},
-            {args: [], assert: false},
-            {args: [null], assert: false},
-            {args: [1], assert: false},
-            {args: ["Hello World"], assert: false},
-            {args: [[1, 2]], assert: false},
-            {args: [{}], assert: true},
-            {args: [{halt: 1}], assert: true}
-        ],
-        plural: function (number, noun, plural, no) {
-            if (number === 0 && no) {
-                return no + " " + plural;
-            } else {
-                return number + " " + (
-                    (number === 1)
-                    ? noun
-                    : plural
-                );
-            }
-        },
-        tests_plural: [
-            {args: [0, "bean", "beans", "No"], assert: "No beans"},
-            {args: [0, "bean", "beans"], assert: "0 beans"},
-            {args: [1, "bean", "beans"], assert: "1 bean"},
-            {args: [-1, "bean", "beans"], assert: "-1 beans"},
-            {args: [2, "bean", "beans"], assert: "2 beans"},
-            {args: [-2, "bean", "beans"], assert: "-2 beans"}
-        ],
-        isWeekday: function (n) {
-            return (
-                n === JEQL.DOM.days.monday
-                || n === JEQL.DOM.days.tuesday
-                || n === JEQL.DOM.days.wednesday
-                || n === JEQL.DOM.days.thursday
-                || n === JEQL.DOM.days.friday
-            );
-        },
-        tests_isWeekday: [
-            {args: [0], assert: false},
-            {args: [1], assert: true},
-            {args: [2], assert: true},
-            {args: [3], assert: true},
-            {args: [4], assert: true},
-            {args: [5], assert: true},
-            {args: [6], assert: false}
-        ],
-        perhaps: function (value, fallback) {
-            return (
-                (!value || value.toString() === "")
-                ? fallback
-                : value
-            );
-        }
-    },
-
-    targetCellId: function (name) {
-        const nameParts = name.split(JEQL.settings.indexOpenerGlyph);
-        const objectName = nameParts[0];
-        const elementName = (
-            (
-                nameParts.length === 2 && nameParts[1].startsWith(
-                    JEQL.settings.indexCloserGlyph + JEQL.settings.memberGlyph
-                )
-            )
-            ? nameParts[1].split(JEQL.settings.memberGlyph)[1]
-            : JEQL.halt(
-                "A " + JEQL.name + " cell selector must contain exactly one" +
-                " occurence of '" + JEQL.settings.indexOpenerGlyph +
-                JEQL.settings.indexCloserGlyph + JEQL.settings.memberGlyph + "'"
-            )
-        );
-        var currentRowNumber = 0; // Default to the first row
-        var trigger = JEQL.trigger;
-        var indexPart;
-        var i;
-
-        // Find out, if possible, from what row the last event was triggered
-        for (i = 0; trigger && i < JEQL.settings.iterationLimit; i += 1) {
-            JEQL.trace(
-                "targetCellId(" + name + ", " + objectName + "): " +
-                trigger.tagName + " with id '" + trigger.id + "')"
-            );
-            if (
-                trigger.id &&
-                trigger.id.includes(JEQL.settings.indexCloserGlyph) &&
-                trigger.id.startsWith(
-                    objectName + JEQL.settings.indexOpenerGlyph
-                )
-            ) {
-                indexPart = trigger.id.split(JEQL.settings.indexOpenerGlyph);
-                JEQL.trace("targetCellId: " + JSON.stringify(indexPart));
-                currentRowNumber = parseInt(
-                    indexPart[1].split(JEQL.settings.indexCloserGlyph)[0]
-                );
-                break;
-            }
-            trigger = trigger.parentElement;
-        }
-
-        return (
-            objectName +
-            JEQL.settings.indexOpenerGlyph +
-            currentRowNumber +
-            JEQL.settings.indexCloserGlyph +
-            JEQL.settings.memberGlyph +
-            elementName
-        );
-    },
-
-    interpret: function (name) {
-        const targetId = (
-            name.includes(
-                JEQL.settings.indexOpenerGlyph +
-                JEQL.settings.indexCloserGlyph +
-                JEQL.settings.memberGlyph
-            )
-            ? JEQL.targetCellId(name)
-            : name
-        );
-        var target = (
-            targetId
-            ? document.getElementById(targetId)
-            : null
-        );
-        var result = "";
-
-        if (!target) {
-            JEQL.halt("No element found with id '" + targetId + "'");
-        }
-
-        result = target.innerHTML;
-        JEQL.trace(
-            "interpret(" + name + ", " + target.id + ") = '" + result + "'"
-        );
-        return result;
-    },
-
-    popup: function (callArgs) {
-        var cover = document.createElement("div");
-        var iframe = document.createElement("iframe");
-
-        cover.className = JEQL.Class.cover;
-        iframe.className = JEQL.Class.popup;
-        iframe.src = callArgs + ".html";
-
-        cover.appendChild(iframe);
-        document.body.appendChild(cover);
-    },
-
-    call: function (callArgs) {
-        const keys = (
-            JEQL.Lib.isSimpleObject(callArgs)
-            ? Object.keys(callArgs.args)
-            : []
-        );
-        const page = (
-            (keys.length)
-            ? callArgs.page
-            : callArgs
-        );
-        var actualArgs = {};
-        var i = 0;
-        var target;
-
-        if (!JEQL.settings.fakeData) {
-            for (i = 0; i < keys.length; i += 1) {
-                target = keys[i];
-                actualArgs[target] = JEQL.interpret(callArgs.args[target]);
-            }
-        }
-
-        if (JEQL.settings.debugCall) {
-            target = page + "(" + JSON.stringify(actualArgs) + ")";
-            if (!confirm("Target of call is '" + target + "'")) {
-                JEQL.halt("Call cancelled: " + target);
-            }
-        }
-
-        window.location.href = page + ".html" + (
-            actualArgs.length
-            ? JEQL.settings.URIQueryGlyph + encodeURIComponent(
-                JSON.stringify(actualArgs)
-            )
-            : ""
-        );
-    },
-
-    init: function () {
-        if (!JEQL.pages.login || window.location.href !== JEQL.helpers.formatFromUrl(JEQL.pages.login)) {
-            if (!(JEQL.HTTP.sessionStorage.jaaqlKey in window.sessionStorage)) {
-                if (JEQL.pages.login) {
-                    window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
-                } else {
-                    window.addEventListener('DOMContentLoaded', JEQL.showLoginModal, false);
-                    return;
-                }
-            } else {
-                // TODO swap this out for a login checker
-                JEQL.submit({
-                    "query": "SELECT version()",
-                    "render": function() {},
-                    "async": false
-                });
-            }
-        }
-        
-        const href = window.location.href;
-        const questionMark = href.indexOf(JEQL.settings.URIQueryGlyph);
-        const uriData = (
-            questionMark > 0
-            ? href.substring(questionMark + 1)
-            : ""
-        );
-
-        JEQL.trace(
-            "init(" + href +
-            ", " + questionMark +
-            ", " + uriData +
-            ")"
-        );
-        JEQL.args = (
-            uriData
-            ? JSON.parse(decodeURIComponent(uriData))
-            : []
-        );
-    },
-
-    clearElement: function (container) {
-        JEQL.trace("clearElement(" + container + ")");
-        while (container.firstChild) {
-            container.removeChild(container.firstChild);
-        }
-    },
-
-    table: function (container, render, object) {
-        var viewport;
-        var table;
-        var thead;
-        var tbody;
-        var tr;
-        var hasRowOperations = false;
-        var i = 0;
-        var n = 0;
-        var cell = {};
-        var span = {};
-
-        JEQL.trace(
-            "table(" + container +
-            ", " + JSON.stringify(render) +
-            ", " + JSON.stringify(object.columns) +
-            ", " + JSON.stringify(object.descriptors) +
-            ")"
-        );
-
-        if (render.hideWhenEmpty && object.rows.length < 1) {
-            return;
-        }
-
-        // If the user requests a legend, we add it (a div above the table)
-        if (render.legend) {
-            cell = document.createElement("div");
-            cell.className = JEQL.Class.legend;
-            cell.innerHTML = render.legend;
-            container.appendChild(cell);
-        }
-
-        if (render.operations) {
-            n = 0;
-            for (i = 0; i < render.operations.length; i += 1) {
-                JEQL.trace(
-                    "table: '" + JSON.stringify(render.operations[i]) + "'"
-                );
-                if (render.operations[i].table) {
-                    n += 1;
-                    if (n === 1) {
-                        cell = document.createElement("div");
-                        cell.className = JEQL.Class.operations;
-                        container.appendChild(cell);
-                    }
-                    span = document.createElement("span");
-                    span.className = (
-                        render.operations[i].table +
-                        " " +
-                        JEQL.Class.button
-                    );
-                    cell.appendChild(span);
-                    JEQL.trace(
-                        "table: added table button '" +
-                        render.operations[i].table + "'"
-                    );
-                }
-            }
-        }
-
-        viewport = document.createElement("div");
-        viewport.className = JEQL.Class.viewport;
-        if (render.as) {
-            viewport.id = render.as;
-        }
-
-        table = document.createElement("table");
-        thead = document.createElement("thead");
-        tbody = document.createElement("tbody");
-
-        // If the user requests a caption, we add one
-        if (render.caption) {
-            cell = document.createElement("caption");
-            cell.innerHTML = render.caption;
-            table.appendChild(cell);
-        }
-
-        // Add the heading to the table
-        tr = document.createElement("tr");
-
-        if (!object.columns) {
-            object.columns = [];
-            for (i = 0; i < object.descriptors.length; i += 1) {
-                object.columns[i] = object.descriptors[i].name;
-            }
-        }
-
-        for (i = 0; i < object.columns.length; i += 1) {
-            cell = document.createElement("th");
-            cell.id = (
-                table.id +
-                JEQL.settings.indexOpenerGlyph +
-                JEQL.settings.indexCloserGlyph
-            );
-            if (
-                object.descriptors &&
-                object.descriptors.length === object.columns.length
-            ) {
-                cell.innerHTML = JEQL.Lib.perhaps(
-                    object.descriptors[i].heading,
-                    object.descriptors[i].caption
-                );
-            } else {
-                cell.innerHTML = object.columns[i];
-            }
-            tr.appendChild(cell);
-        }
-        if (render.operations) {
-            cell = document.createElement("th");
-            cell.className = JEQL.Class.operations;
-            for (i = 0; i < render.operations.length; i += 1) {
-                if (render.operations[i].row) {
-                    hasRowOperations = true;
-                    cell = document.createElement("th");
-                    cell.className = JEQL.Class.operations;
-                    cell.innerHTML = JEQL.DOM.nonBreakingSpace;
-                    tr.appendChild(cell);
-                    break;
-                }
-            }
-        }
-        thead.appendChild(tr);
-
-        // Add the body to the table
-        for (n = 0; n < object.rows.length; n += 1) {
-            tr = document.createElement("tr");
-            tr.id = (
-                table.id +
-                JEQL.settings.indexOpenerGlyph +
-                n +
-                JEQL.settings.indexCloserGlyph
-            );
-            for (i = 0; i < object.columns.length; i += 1) {
-                cell = document.createElement("td");
-
-                // Caption
-                if (object.rows[n][i] !== "") {
-                    span = document.createElement("span");
-                    span.className = JEQL.Class.caption;
-                    span.innerHTML = (
-                        (
-                            object.descriptors &&
-                            object.descriptors.length === object.columns.length
-                        )
-                        ? object.descriptors[i].caption
-                        : object.columns[i]
-                    );
-                    cell.appendChild(span);
-                    tr.appendChild(cell);
-                } else {
-                    cell.className = JEQL.Class.empty;
-                }
-
-                // Value
-                span = document.createElement("span");
-                span.className = JEQL.Class.value;
-                span.id = (
-                    tr.id +
-                    JEQL.settings.memberGlyph +
-                    object.columns[i]
-                );
-                span.innerHTML = object.rows[n][i];
-                cell.appendChild(span);
-                tr.appendChild(cell);
-            }
-            tbody.appendChild(tr);
-            if (hasRowOperations) {
-                cell = document.createElement("td");
-                cell.className = JEQL.Class.operations;
-                for (i = 0; i < render.operations.length; i += 1) {
-                    if (render.operations[i].row) {
-                        span = document.createElement("span");
-                        span.className = (
-                            render.operations[i].row +
-                            " " +
-                            JEQL.Class.button
-                        );
-                        cell.appendChild(span);
-                    }
-                }
-                tr.appendChild(cell);
-            }
-        }
-
-        if (object.rows.length < 1) {
-            tr = document.createElement("tr");
-            tr.className = JEQL.Class.missing;
-            cell = document.createElement("td");
-            cell.colSpan = object.columns.length;
-            cell.className = JEQL.Class.missing;
-            tr.appendChild(cell);
-            tbody.appendChild(tr);
-        }
-
-        table.appendChild(thead);
-        table.appendChild(tbody);
-        table.className = JEQL.Class.table;
-        viewport.appendChild(table);
-        container.appendChild(viewport);
-    },
-
-    grid: function (container, render, object) {
-        var table;
-        var tbody;
-        var tr = {};
-        var cell = {};
-        var i = 0;
-        var j = 0;
-        var n = 0;
-        var span;
-        var viewport;
-        var showRow = true;
-
-        if (render.hideWhenEmpty && object.rows.length < 1) {
-            return;
-        }
-
-        // If the user requests a legend, we add it (a div above the table)
-        if (render.legend) {
-            cell = document.createElement("div");
-            cell.className = JEQL.Class.legend;
-            cell.innerHTML = render.legend;
-            container.appendChild(cell);
-        }
-
-        if (render.operations) {
-            n = 0;
-            for (i = 0; i < render.operations.length; i += 1) {
-                if (render.operations[i].grid) {
-                    n += 1;
-                    if (n === 1) {
-                        cell = document.createElement("div");
-                        cell.className = JEQL.Class.operations;
-                    }
-                    span = document.createElement("span");
-                    span.className = (
-                        render.operations[i].grid +
-                        " " +
-                        JEQL.Class.button
-                    );
-                    cell.appendChild(span);
-                }
-            }
-            if (n) {
-                container.appendChild(cell);
-            }
-        }
-
-        viewport = document.createElement("div");
-        viewport.className = JEQL.Class.viewport;
-        if (render.as) {
-            viewport.id = render.as;
-        }
-
-        table = document.createElement("table");
-        tbody = document.createElement("tbody");
-
-        JEQL.trace(
-            "grid(" + container + ", " + render.as + ", " + object + ")"
-        );
-
-        // If the user requests a caption, we add one (inside the table)
-        if (render.caption) {
-            cell = document.createElement("caption");
-            cell.innerHTML = render.caption;
-            table.appendChild(cell);
-        }
-
-        if (!object.columns) {
-            object.columns = [];
-            for (i = 0; i < object.descriptors.length; i += 1) {
-                object.columns[i] = object.descriptors[i].name;
-            }
-        }
-
-        if (object.rows.length > 0) {
-            for (i = 0; i < object.columns.length; i += 1) {
-                if (object.rows.length < 1 && render.hideEmptyRows) {
-                    showRow = false;
-                }
-                if (showRow) {
-                    tr = document.createElement("tr");
-
-                    // Caption
-                    cell = document.createElement("th");
-                    cell.innerHTML = (
-                        (
-                            object.descriptors &&
-                            object.descriptors.length === object.columns.length
-                        )
-                        ? object.descriptors[i].caption
-                        : object.columns[i]
-                    );
-                    tr.appendChild(cell);
-
-                    for (j = 0; j < object.rows.length; j += 1) {
-                        // Content
-                        cell = document.createElement("td");
-                        cell.innerHTML = object.rows[j][i];
-                        cell.id = (
-                            table.id +
-                            JEQL.settings.memberGlyph +
-                            object.columns[i]
-                        );
-                        tr.appendChild(cell);
-                    }
-                    tbody.appendChild(tr);
-                }
-            }
+    pagesElem.innerHTML = "";
+    pagesElem.appendChild(elemBuilder("button").buildText("1").buildBoolean("disabled",
+        curPage === 1).buildEventListener("click", pageButtonClickFunc));
+    if (curPage > 3) {
+        if (numPages < 8 || curPage === 4) {
+            pagesElem.appendChild(elemBuilder("button").buildText("2").buildBoolean("disabled",
+                curPage === 2).buildEventListener("click", pageButtonClickFunc));
         } else {
-            tr = document.createElement("tr");
-            tr.className = JEQL.Class.missing;
-            cell = document.createElement("td");
-            cell.colSpan = 2;
-            cell.className = JEQL.Class.missing;
-            tr.appendChild(cell);
-            tbody.appendChild(tr);
-        }
-
-        table.className = JEQL.Class.grid;
-        table.appendChild(tbody);
-        container.appendChild(table);
-    },
-
-    fakeResponseText: function (descriptors, assertion) {
-        const Fake = {
-            "descriptors": [{
-                "name": "lorem",
-                "datatype": "number",
-                "caption": "Lorem",
-                "isrequired": true
-            }, {
-                "name": "dolor_sit_amet",
-                "datatype": "date",
-                "caption": "Dolor Sit Amet",
-                "heading": "Dolor",
-                "isrequired": true
-            }, {
-                "name": "adipisci",
-                "datatype": "number",
-                "caption": "Adipisci",
-                "isrequired": true
-            }, {
-                "name": "ipsum",
-                "datatype": "string",
-                "length": "32",
-                "caption": "Ipsum",
-                "isrequired": false
-            }, {
-                "name": "ligula",
-                "datatype": "string",
-                "length": "20",
-                "caption": "Ligula",
-                "isrequired": false
-            }],
-            "rows": [
-                [
-                    17,
-                    "1962-08-14",
-                    2001,
-                    "Aliquam interdum facilisis ligula id faucibus.",
-                    "nulla"
-                ],
-                [
-                    18,
-                    "1960-09-03",
-                    1984,
-                    "",
-                    "augue"
-                ],
-                [
-                    88,
-                    "1999-12-31",
-                    2020,
-                    "Similique sunt in culpa qui officia deserunt mollitia" +
-                    " animi, id est laborum et dolorum fuga. Et harum quidem" +
-                    " rerum facilis est et expedita distinctio. Nam libero" +
-                    " tempore, cum soluta nobis est eligendi optio cumque" +
-                    " nihil impedit quo minus id quod maxime placeat facere" +
-                    " possimus, omnis voluptas assumenda est, omnis dolor" +
-                    " repellendus. Temporibus autem quibusdam et aut officiis" +
-                    " debitis aut rerum necessitatibus saepe eveniet ut et" +
-                    " voluptates repudiandae sint et molestiae non" +
-                    " recusandae. Itaque earum rerum hic tenetur a sapiente" +
-                    " delectus, ut aut reiciendis.",
-                    ""
-                ],
-                [
-                    93,
-                    "1964-11-22",
-                    1976,
-                    "At vero eos et accusamus et iusto odio dignissimos" +
-                    " ducimus qui blanditiis praesentium voluptatum deleniti" +
-                    " atque corrupti quos dolores et quas molestias excepturi" +
-                    " sint occaecati cupiditate non provident.",
-                    ""
-                ],
-                [
-                    112,
-                    "1932-09-13",
-                    1954,
-                    "Itaque earum rerum hic tenetur a sapiente delectus, ut" +
-                    " aut reiciendis voluptatibus maiores alias consequatur" +
-                    " aut perferendis doloribus asperiores repellat.",
-                    ""
-                ],
-                [
-                    977,
-                    "2009-09-11",
-                    1999,
-                    "Neque porro quisquam est, qui dolorem ipsum quia dolor" +
-                    " sit amet, consectetur, adipisci velit, sed quia non" +
-                    " numquam eius modi tempora incidunt ut labore et dolore" +
-                    " magnam aliquam quaerat voluptatem.",
-                    ""
-                ],
-                [
-                    1288,
-                    "1982-05-04",
-                    1989,
-                    "Mauris ultricies, elit a maximus ornare, neque dui" +
-                    " convallis nulla, sed rutrum orci urna ut nunc. Maecenas" +
-                    " mi ligula, laoreet ut dignissim eu, porttitor at augue." +
-                    " Morbi aliquet orci sit amet mi condimentum sollicitudin.",
-                    ""
-                ]
-            ]
-        };
-        const rowOffset = Math.floor(Math.random() * Fake.rows.length);
-        const columnOffset = Math.floor(
-            Math.random() * Fake.descriptors.length
-        );
-
-        var rowCount = Math.floor(Math.random() * 58); // Age when writing!
-        var columnCount = (
-            JEQL.Lib.isSimpleObject(descriptors)
-            ? Object.keys(descriptors).length
-            : (
-                (descriptors && Array.isArray(descriptors))
-                ? descriptors.length
-                : 0
-            )
-        );
-        var i;
-        var x; // marks the spot: here be treasure...
-        var result = {};
-
-        if (columnCount === 0) {
-            columnCount = 3 + ( // 3 or more descriptors
-                Math.floor(Math.random() * (Fake.descriptors.length - 3))
-            );
-        }
-        result.descriptors = [];
-        for (i = 0; i < columnCount; i += 1) {
-            x = (i + columnOffset) % Fake.descriptors.length;
-            result.descriptors[i] = Fake.descriptors[x];
-        }
-
-        if (assertion === JEQL.Assertion.one) {
-            rowCount = 1;
-        } else if (assertion === JEQL.Assertion.zero) {
-            rowCount = 0;
-        } else if (assertion === JEQL.Assertion.oneOrMore) {
-            rowCount += 1;
-        } else if (assertion === JEQL.Assertion.zeroOrOne) {
-            rowCount = rowCount % 2;
-        }
-        result.rows = [];
-        for (i = 0; i < rowCount; i += 1) {
-            x = (i + rowOffset) % Fake.rows.length;
-            result.rows[i] = Fake.rows[x];
-        }
-
-        return result;
-    },
-
-    fake: function (container, queries, renders, tuples, pivots, errHandlers, runAsync = true) {
-        var i = 0;
-
-        JEQL.trace(
-            "fake(" + container.tagName +
-            ", " + queries.toString() +
-            ", " + renders.toString() +
-            ")"
-        );
-
-        for (i = 0; i < queries.length && i < renders.length; i += 1) {
-            renders[i].using(
-                container,
-                renders[i],
-                JEQL.fakeResponseText(queries.select, queries[i].assert)
-            );
-        }
-    },
-    
-    showLoginModal: function () {
-        if (document.getElementById("jeql__login_div")) { return; }
-        var loginDiv = document.createElement("div");
-        loginDiv.setAttribute("id", "jeql__login_div");
-        document.body.appendChild(loginDiv);
-        loginDiv.setAttribute("class", "login-modal-container");
-
-        var sub = document.createElement("div");
-        loginDiv.appendChild(sub);
-        sub.setAttribute("class", "login-modal");
-        
-        var h1 = document.createElement("h1");
-        sub.appendChild(h1);
-        h1.innerHTML = "Login to Your Account";
-        
-        var input = document.createElement("input");
-        sub.appendChild(input);
-        input.setAttribute("type", "text");
-        input.setAttribute("name", "jaaql_user");
-        input.setAttribute("size", "10");
-        input.setAttribute("id", "jaaql_user");
-        input.setAttribute("placeholder", "Username");
-        
-        input = document.createElement("input");
-        sub.appendChild(input);
-        input.setAttribute("type", "password");
-        input.setAttribute("name", "jaaql_pass");
-        input.setAttribute("size", "10");
-        input.setAttribute("id", "jaaql_pass");
-        input.setAttribute("placeholder", "Password");
-        
-        var but = document.createElement("button");
-        sub.appendChild(but);
-        but.setAttribute("name", "login");
-        but.innerHTML = "Login";
-        but.onclick = function() {
-            JEQL.login(document.getElementById("jaaql_user").value, document.getElementById("jaaql_pass").value, function(rootUrl) { window.location.reload() });
-        }
-        
-        setTimeout(function() {
-            var div = document.getElementById("jeql__login_div");
-            div.style.opacity = 1.0;
-        }, 200);
-    },
-	
-	copySub: function(response, pivot, index) {
-		var ret = [];
-		
-		var cur = 0;
-		for (key in response) {
-			if (cur < index) {
-				cur[key] = response[key];
-			}
-			cur ++;
-		}
-		
-		ret[pivot] = [];
-	},
-	
-	copySubAfter: function(response, pivot, index) {
-		var ret = [];
-		
-		var cur = 0;
-		for (key in response) {
-			if (cur < index) {
-				cur[key] = response[key];
-			}
-			cur ++;
-		}
-		
-		ret[pivot] = [];
-	},
-	
-	genCurrRowFill: function(addRow, readRow, pivot, columns) {
-		var lastColIdx = -1;
-		var rows = [];
-		addRow.push(rows);
-		var lastRowSlice = rows;
-		var rowsStack = [];
-		for (var key in pivot) {
-			var column = pivot[key];
-			
-			var curColIdx = columns.indexOf(column);
-			var columnSlice = null;
-			if (lastColIdx === -1) {
-				columnSlice = readRow.slice(0, curColIdx);
-			} else {
-				columnSlice = readRow.slice(lastColIdx, curColIdx);
-			}
-			
-			for (var col in columnSlice) {
-				lastRowSlice.push(columnSlice[col]);
-			}
-			
-			var newContainer = [];
-			var newArr = [];
-			newContainer.push(newArr);
-			var allNull = true;
-			for (var col in lastRowSlice) {
-				if (lastRowSlice[col] !== null) {
-					allNull = false;
-				}
-			}
-			if (!allNull) {
-				lastRowSlice.push(newContainer);
-			} else {
-				while (lastRowSlice.length !== 0) {
-					lastRowSlice.pop();
-				}
-				rowsStack[rowsStack.length - 1].pop();
-			}
-			rowsStack.push(newContainer);
-			lastRowSlice = newArr;
-			lastColIdx = curColIdx;
-		}
-		if (lastColIdx === -1) {
-			columnSlice = readRow.slice(0, curColIdx);
-		} else {
-			columnSlice = readRow.slice(lastColIdx, columns.length);
-		}
-		
-		var allNull = true;
-		for (var col in columnSlice) {
-			if (columnSlice[col] !== null) {
-				if (Array.isArray(columnSlice[col]) && columnSlice[col].length == 0) {
-					
-				} else {
-					allNull = false;
-				}
-			}
-			lastRowSlice.push(columnSlice[col]);
-		}
-		if (allNull) {
-			if (rowsStack.length !== 0) {
-				if (rowsStack[rowsStack.length - 1].length !== 0) {
-					rowsStack[rowsStack.length - 1].pop();
-				}
-			}
-		}
-		
-		return rowsStack;
-	},
-
-	pivotData: function(response, pivot) {
-		var columns = response[JEQL.Class.columns];
-		var rows = response[JEQL.Class.rows];
-		var collapsedColumns = [];
-		var collapsedRows = [];
-		
-		if (pivot.constructor != Object) {
-			JEQL.halt("Pivot must be of type dictionary e.g. { pivot_name: pivoted_column }");
-		}
-
-		var lastColIdx = -1;
-		var lastColumnSlice = collapsedColumns;
-		
-		for (var key in pivot) {
-			if (key.constructor != String) {
-				JEQL.halt("Pivot keys must be strings e.g. { pivot_name: pivoted_column }");
-			}
-			var column = pivot[key];
-			
-			var curColIdx = columns.indexOf(column);
-			if (curColIdx === -1) {
-				JEQL.halt("Could not find column '" + column + "' in returned columns. Please choose one of " + columns);
-			} else if (lastColIdx > curColIdx) {
-				JEQL.halt("Found column '" + columns[curColIdx] + "' further in the array from '" + columns[lastColIdx] + "'. Please supply columns for pivot with relative rankings matching " + columns);
-			} else if (curColIdx === lastColIdx) {
-				JEQL.halt("Found column '" + columns[curColIdx] + "' duplicated in pivot");
-			}
-						
-			var columnSlice = null;
-			if (lastColIdx === -1) {
-				columnSlice = columns.slice(0, curColIdx);
-			} else {
-				columnSlice = columns.slice(lastColIdx, curColIdx);
-			}
-			
-			for (var col in columnSlice) {
-				lastColumnSlice.push(columnSlice[col]);
-			}
-			
-			var newArr = [];
-			var ins = {};
-			ins[key] = newArr;
-			lastColumnSlice.push(ins);
-			lastColumnSlice = newArr;
-			lastColIdx = curColIdx;
-		}
-		
-		if (lastColIdx === -1) {
-			columnSlice = columns.slice(0, curColIdx);
-		} else {
-			columnSlice = columns.slice(lastColIdx, columns.length);
-		}
-		
-		for (var col in columnSlice) {
-			lastColumnSlice.push(columnSlice[col]);
-		}
-		
-		
-		var rowKeyStack = [];
-		var curRowStack = [collapsedRows];
-
-		for (var row in rows) {
-			var rawRow = rows[row];
-
-			var popNum = 0;
-			
-			for (var i = rowKeyStack.length - 1; i > -1; i --) {
-				var curKey = rowKeyStack[i];
-				var colCheckFromIdx = curKey[0];
-				var colCheckToIdx = curKey[1];
-				var colCheckVal = curKey[2];
-				
-				var sliced = rawRow.slice(colCheckFromIdx, colCheckToIdx);
-				var arrEq = true;
-				for (var j = 0; j < sliced.length; j ++) {
-					if (sliced[j] !== colCheckVal[j]) {
-						arrEq = false;
-						break;
-					}
-				}
-				
-				if (!arrEq) {
-					popNum = rowKeyStack.length - i;
-				}
-			}
-			for (var i = 0; i < popNum; i ++) {
-				rowKeyStack.pop();
-				curRowStack.pop();
-			}
-			
-			var fillFrom = 0;
-			if (rowKeyStack.length !== 0) {
-				fillFrom = rowKeyStack[rowKeyStack.length - 1][1];
-			}
-			
-			var keyArr = [];
-			var curKey = {};
-			var count = 1;
-			for (var key in pivot) {
-				if (count > rowKeyStack.length) {
-					curKey[key] = pivot[key];
-					keyArr.push(key);
-				}
-				count++;
-			}
-			
-			var rowStack = JEQL.genCurrRowFill(curRowStack[curRowStack.length - 1], rawRow.slice(fillFrom, rawRow.length), curKey, columns.slice(fillFrom, rawRow.length));
-			for (var i = 0; i < rowStack.length; i ++) {
-				curRowStack.push(rowStack[i]);
-				var curRowKey = [];
-				var curColIdx = 0;
-				if (i > 0) {
-					curColIdx = columns.indexOf(pivot[keyArr[i - 1]]);
-				}
-				var colToIdx = columns.indexOf(pivot[keyArr[i]]);
-				rowKeyStack.push([curColIdx, colToIdx, rawRow.slice(curColIdx, colToIdx)]);
-			}
-		}
-
-		var retArr = {};
-		retArr[JEQL.Class.columns] = collapsedColumns;
-		retArr[JEQL.Class.rows] = collapsedRows;
-		return retArr;
-	},
-
-    tuplesToObjects: function(response) {
-        var columns = response[JEQL.Class.columns];
-        var rows = response[JEQL.Class.rows];
-        
-        var ret = [];
-        
-        for (var i = 0; i < rows.length; i ++) {
-            var obj = {};
-            for (var i2 = 0; i2 < columns.length; i2 ++) {
-				if (columns[i2].constructor == Object) {
-					var objKey = Object.keys(columns[i2])[0];
-					var subResponse = {};
-					subResponse[JEQL.Class.columns] = columns[i2][objKey];
-					subResponse[JEQL.Class.rows] = rows[i][i2];
-
-					obj[objKey] = JEQL.tuplesToObjects(subResponse);
-				} else {
-					obj[columns[i2]] = rows[i][i2];
-				}
-            }
-            ret.push(obj);
-        }
-
-        return ret;
-    },
-
-    get: function (container, queries, renders, tuples, pivots, errHandler, runAsync = true) {
-        var request = (
-            window.XMLHttpRequest
-            ? new XMLHttpRequest()
-            : new ActiveXObject("Microsoft.XMLHTTP")
-        );
-
-        JEQL.trace(
-            "get(" + container.tagName +
-            ", " + JSON.stringify(queries) +
-            ", " + JSON.stringify(renders) +
-            ")"
-        );
-
-        request.withCredentials = false;
-        request.onerror = function () {
-            JEQL.halt("Request failed!");
-        };
-        request.onreadystatechange = function () {
-            var i = 0;
-            var response;
-            if (request.readyState === JEQL.HTTP.readyState.done) {
-                if (request.status === JEQL.HTTP.status.ok) {
-                    response = JSON.parse(request.responseText);
-                    for (i = 0; i < renders.length; i += 1) {
-						var transformed = response[i];
-
-						if (pivots[i]) {
-							transformed = JEQL.pivotData(transformed, pivots[i]);
-						}
-
-						if (!tuples[i]) {
-							transformed = JEQL.tuplesToObjects(transformed);
-						}
-						
-                        renders[i].using(
-                            container,
-                            renders[i],
-                            transformed
-                        );
-                    }
-                } else if (request.status === JEQL.HTTP.status.unauthorized) {
-                    if (JEQL.pages.login) {
-                        window.location.replace(JEQL.helpers.formatFromUrl(JEQL.pages.login));
-                    } else {
-                        JEQL.showLoginModal();
-                        return;
-                    }
-                } else {
-                    errHandler(request.status, request.responseText, "Request completed but not OK: status was " +
-                        request.status + ", response was '" +
-                        request.responseText + "'");
-                }
-            }
-        };
-
-        request.open("POST", JEQL.settings.endpoint + JEQL.endpoints.submit, runAsync);
-        request.setRequestHeader(
-            JEQL.HTTP.requestHeader.contentType,
-            JEQL.HTTP.requestHeader.JSON
-        );
-        request.setRequestHeader(
-            JEQL.HTTP.requestHeader.authorization,
-            window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey]
-        );
-        try {
-            request.send(JSON.stringify(queries));
-        } catch (e) {
-            JEQL.halt("Failed to send request: " + e.toString());
-        }
-    },
-
-    expandRender: function (arg) {
-        return (
-            (arg && typeof arg === "function")
-            ? {"using": arg}
-            : arg
-        );
-    },
-
-    /**  Find the last script element in the DOM so far--which is where we
-    *    were called from--and append a set of named elements to its parent
-    *    which are to be populated with data retrieved from the database.
-    *    If, for whatever reason, we are unable to find the last script element
-    *    we'll append the set of named elements to the body of the document
-    **/
-    load: function (args, errorHandler = undefined) {
-        const scriptElements = document.getElementsByTagName(JEQL.DOM.script);
-        const lastScriptElement = (
-            (scriptElements && scriptElements.length)
-            ? scriptElements[scriptElements.length - 1]
-            : null
-        );
-        const container = (
-            lastScriptElement
-            ? lastScriptElement.parentElement
-            : document.body
-        );
-        const queryFunction = (
-            JEQL.settings.fakeData
-            ? JEQL.fake
-            : JEQL.get
-        );
-
-        var queries = [];
-        var renders = [];
-        var tuples = [];
-		var pivots = [];
-        var errHandlers = [];
-        var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
-
-        var i = 0;
-
-        JEQL.trace(
-            "load(" + container.tagName +
-            ", " + JSON.stringify(args) +
-            ")"
-        );
-
-        if (Array.isArray(args)) {
-            for (i = 0; i < args.length; i += 1) {
-                queries.push(args[i].query);
-                
-                if (JEQL.Class.tuples in args[i]) {
-                    tuples.push(args[i].tuples);
-                } else {
-					tuples.push(false);
-				}
-                if (JEQL.Class.render in args[i]) {
-                    renders.push(JEQL.expandRender(args[i].render));
-                } else {
-                    renders.push(JEQL.expandRender(function() {  }));
-                }
-				
-				if (JEQL.Class.pivot in args[i]) {
-					pivots.push(args[i].pivot);
-				} else {
-					pivots.push(false);
-				}
-            }
-        } else {
-            queries.push(args.query);
-
-            if (JEQL.Class.tuples in args) {
-                tuples.push(args.tuples);
-            } else {
-				tuples.push(false);
-			}
-            if (JEQL.Class.render in args) {
-                renders.push(JEQL.expandRender(args.render));
-            } else {
-                renders.push(JEQL.expandRender(function() {  }));
-            }
-			
-			if (JEQL.Class.pivot in args) {
-				pivots.push(args.pivot);
-			} else {
-				pivots.push(false);
-			}
-			
-            if (JEQL.Class.error in args) {
-                errorHandler = args.error;
-            }
-        }
-        
-        if (errorHandler === undefined) {
-            errorHandler = defaultErrorHandler;
-        }
-        
-        queryFunction(container, queries, renders, tuples, pivots, errorHandler);
-    },
-
-    handleEvent: function (e) {
-        var i = 0;
-        var eventHandler;
-
-        JEQL.trace("handleEvent(" + e.type + ", " + e.srcElement + ")");
-        for (i = 0; i < JEQL.settings.eventHandlers.length; i += 1) {
-            eventHandler = JEQL.settings.eventHandlers[i];
-            if (
-                e.type === eventHandler.eventType &&
-                e.srcElement.matches(eventHandler.selector)
-            ) {
-                JEQL.trigger = e.srcElement;
-                eventHandler.action(e);
-                break;
-            }
-        }
-    },
-
-    on: function (args) {
-        const keys = Object.keys(args);
-        var eventType;
-        var i = 0;
-        var found = false;
-
-        JEQL.trace("on(" + JSON.stringify(args) + ")");
-
-        if (!args.action) {
-            JEQL.halt("No 'action' found in arguments to 'JEQL.on()'");
-        }
-
-        // Get the event name from the args object
-        for (i = 0; i < keys.length; i += 1) {
-            if (
-                keys[i] !== JEQL.Anatomy.action &&
-                keys[i] !== JEQL.Anatomy.exclude
-            ) {
-                if (eventType) {
-                    JEQL.halt(
-                        "Second event name '" + keys[i] + "' found in" +
-                        " arguments to 'JEQL.on()' after finding '" +
-                        eventType + "'"
-                    );
-                }
-                eventType = keys[i];
-            }
-        }
-        if (!eventType) {
-            JEQL.halt("No event name found in arguments to 'JEQL.on()'");
-        }
-
-        // Find out whether or not we have registered a listener for that
-        // event. If not, add one.
-        for (i = 0; i < JEQL.settings.eventHandlers.length; i += 1) {
-            if (JEQL.settings.eventHandlers[i].eventType) {
-                found = true;
-                break;
-            }
-        }
-        if (!found) {
-            document.addEventListener(
-                eventType,
-                function (e) {
-                    JEQL.handleEvent(e);
-                },
-                false
-            );
-        }
-
-        // Put the requested event name, action and selector into the list of
-        // handlers which might match an incoming event
-        JEQL.settings.eventHandlers.unshift({ // Insert at the beginning
-            "eventType": eventType,
-            "selector": args[eventType],
-            "action": args.action
-        });
-    },
-    
-    submit: function (args, errorHandler = undefined) {
-        const scriptElements = document.getElementsByTagName(JEQL.DOM.script);
-        const lastScriptElement = (
-            (scriptElements && scriptElements.length)
-            ? scriptElements[scriptElements.length - 1]
-            : null
-        );
-        const container = (
-            lastScriptElement
-            ? lastScriptElement.parentElement
-            : document.body
-        );
-
-        const queryFunction = (
-            JEQL.settings.fakeData
-            ? JEQL.fake
-            : JEQL.get
-        );
-        var queries = [];
-        var renders = [];
-        var tuples = [];
-		var pivots = [];
-        var i = 0;
-        
-        var defaultErrorHandler = function(status, response, message) { JEQL.halt(message); };
-
-        JEQL.trace(
-            "submit(" + container.tagName +
-            ", " + JSON.stringify(args) +
-            ")"
-        );
-        var runAsync = true;
-        if (Array.isArray(args)) {
-            for (i = 0; i < args.length; i += 1) {
-                var subDict = {};
-                subDict[JEQL.Class.query] = args[i].query;
-                if (JEQL.Class.echo in args[i]) {
-                    subDict[JEQL.Class.echo] = args[i].echo;
-                }
-                if (JEQL.Class.parameters in args[i]) {
-                    subDict[JEQL.Class.parameters] = args[i].parameters;
-                }
-                queries.push(subDict);
-
-                if (JEQL.Class.tuples in args[i]) {
-                    tuples.push(args[i].tuples);
-                } else {
-					tuples.push(false);
-				}
-                if (JEQL.Class.render in args[i]) {
-                    renders.push(JEQL.expandRender(args[i].render));
-                } else {
-                    renders.push(JEQL.expandRender(function() {  }));
-                }
-				
-				if (JEQL.Class.pivot in args[i]) {
-					pivots.push(args[i].pivot);
-				} else {
-					pivots.push(false);
-				}
-            }
-        } else {
-            var subDict = {};
-            subDict[JEQL.Class.query] = args.query;
-            if (JEQL.Class.echo in args) {
-                subDict[JEQL.Class.echo] = args.echo;
-            }
-            if (JEQL.Class.parameters in args) {
-                subDict[JEQL.Class.parameters] = args.parameters;
-            }
-            if (JEQL.Class.error in args) {
-                errorHandler = args.error;
-            }
-            queries.push(subDict);
-            
-            if (JEQL.Class.tuples in args) {
-                tuples.push(args.tuples);
-            } else {
-				tuples.push(false);
-			}
-            if (JEQL.Class.render in args) {
-                renders.push(JEQL.expandRender(args.render));
-            } else {
-                renders.push(JEQL.expandRender(function() {  }));
-            }
-			
-			if (JEQL.Class.pivot in args) {
-				pivots.push(args.pivot);
-			} else {
-				pivots.push(false);
-			}
-
-            if ('async' in args) {
-                runAsync = args.async;
-            }
-        }
-        
-        if (errorHandler === undefined) {
-            errorHandler = defaultErrorHandler;
-        }
-
-        queryFunction(container, queries, renders, tuples, pivots, errorHandler, runAsync);
-    },
-    
-    login: function (username, password, callback = window.location.replace) {
-        var request = (
-            window.XMLHttpRequest
-            ? new XMLHttpRequest()
-            : new ActiveXObject("Microsoft.XMLHTTP")
-        );
-
-        JEQL.trace(
-            "login(" + username + ", ...)"
-        );
-
-        request.withCredentials = false;
-        request.onerror = function () {
-            if (this.status === 401) {
-                alert("Incorrect Credentials!"); // TODO spice me up!
-            } else {
-                alert("Could not login: " + request.responseText);
-            }
-            JEQL.halt("Request failed!");
-        };
-        request.onreadystatechange = function () {
-            var i = 0;
-            var response;
-            if (request.readyState === JEQL.HTTP.readyState.done) {
-                if (request.status === JEQL.HTTP.status.ok) {
-                    window.sessionStorage[JEQL.HTTP.sessionStorage.jaaqlKey] = request.responseText;
-                    callback(JEQL.helpers.formatFromUrl(JEQL.pages.root));
-                } else {
-                    JEQL.halt(
-                        "Request completed but not OK: status was " +
-                        request.status + ", response was '" +
-                        request.responseText + "'"
-                    );
-                }
-            }
-        }
-        
-        request.open("POST", JEQL.settings.endpoint + JEQL.endpoints.login, false);
-        request.setRequestHeader(
-            JEQL.HTTP.requestHeader.contentType,
-            JEQL.HTTP.requestHeader.FORM
-        );
-        try {
-            request.send(JEQL.helpers.encodePostBody({"username": username, "password": password}));
-        } catch (e) {
-            JEQL.halt("Failed to send request: " + e.toString());
+            pagesElem.appendChild(elemBuilder("button").buildText("...").buildBoolean("disabled", true));
         }
     }
-};
-JEQL.init();
+    if (numPages > 6 && numPages === curPage) {
+        let curNum = curPage - 4;
+        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+    }
+    if (numPages > 5 && numPages - curPage < 2 && curPage > 5) {
+        let curNum = curPage - 3;
+        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+    }
+    if (numPages > 4 && numPages - curPage < 3 && curPage > 4) {
+        let curNum = curPage - 2;
+        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+    }
+    if (numPages > 1 && curPage - 1 !== numPages) {
+        let curNum = curPage > 2 ? curPage - 1 : 2;
+        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+    }
+    if (numPages > 2 && curPage !== numPages) {
+        let curNum = curPage > 3 ? curPage : 3;
+        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+    }
+    if (numPages > 3 && curPage < numPages && (numPages !== curPage + 1 || numPages === 4)) {
+        let curNum = curPage > 3 ? curPage + 1 : 4;
+        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+    }
+    if (numPages > 6 && curPage < 4) {
+        let curNum = 5;
+        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+    }
+    if (numPages - curPage > 2 && numPages > 5) {
+        if (numPages < 8 || numPages - curPage < 4) {
+            let curNum = numPages - 1;
+            pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+                curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+        } else {
+            pagesElem.appendChild(elemBuilder("button").buildText("...").buildBoolean("disabled", true));
+        }
+    }
+    if (numPages > 4 || (numPages === curPage && (curPage === 3 || curPage === 4))) {
+        let curNum = numPages;
+        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
+            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
+    }
+
+    document.getElementById(totalId).innerText = data[KEY_RECORDS_TOTAL];
+    document.getElementById(filteredId).innerText = data[KEY_RECORDS_FILTERED];
+    document.getElementById(fromId).innerText = (curPage * pageSize - pageSize + 1).toString();
+    document.getElementById(toId).innerText = Math.min((curPage * pageSize), data[KEY_RECORDS_FILTERED]).toString();
+}
+
+export function getPagedSearchingTableRefreshButton(tableId) {
+    return document.getElementById(tableId + "-" + ID_PAGING_REFRESH_BUTTON);
+}
+
+export function setPagedSearchingTableSortField(tableId, sort) {
+    document.getElementById(tableId + "-" + ID_PAGING_SORT).innerText = sort;
+}
+
+export function pagedSearchingTable(table, onChange, searchTransformer = null) {
+    if (!searchTransformer) {
+        searchTransformer = function(ret) { return ret; }
+    }
+    makeBuildable(table);
+    table.buildBoolean(ATTR_JEQL_PAGING_TABLE, true);
+    let tableId = table.id;
+    let refreshId = tableId + "-" + ID_PAGING_REFRESH_BUTTON;
+    let totalId = tableId + "-" + ID_PAGING_TOTAL;
+    let filteredId = tableId + "-" + ID_PAGING_FILTERED;
+    let pagesId = tableId + "-" + ID_PAGING_PAGES;
+    let sizeId = tableId + "-" + ID_PAGING_SIZE;
+    let fromId = tableId + "-" + ID_PAGING_FROM;
+    let searchId = tableId + "-" + ID_PAGING_SEARCH;
+    let lastSearchId = tableId + "-" + ID_PAGING_LAST_SEARCH;
+    let toId = tableId + "-" + ID_PAGING_TO;
+    let curPageId = tableId + "-" + ID_PAGING_CUR_PAGE;
+    let sortId = tableId + "-" + ID_PAGING_SORT;
+    table.buildOlderSibling("div").buildHTML(`
+        <label>
+            Search: 
+            <input type="text" id="${searchId}"/>
+        </label>
+        <label>
+            Page Size:
+            <select id="${sizeId}">
+                <option value="10">10</option>
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="250">250</option>
+                <option value="999999999">All</option>
+            </select>
+        </label>
+        <button id="${refreshId}">Search</button>
+        <span id="${curPageId}" style="display:none">1</span>
+        <span id="${sortId}" style="display:none"></span>
+        <span id="${lastSearchId}" style="display:none"></span>
+    `);
+    table.buildSibling("div").buildHTML(`
+        <div id="${pagesId}"></div><div>Showing <span id="${fromId}"></span> to <span id="${toId}"></span> of <span id="${filteredId}"></span>/<span id="${totalId}"> records</span></div>
+    `);
+    makeBuildable(document.getElementById(pagesId));
+    document.getElementById(sizeId).addEventListener("change", function() {
+        document.getElementById(curPageId).innerText = "1";
+        onChange(0, parseInt(document.getElementById(sizeId).value),
+            searchTransformer(document.getElementById(searchId).value), document.getElementById(sortId).innerText);
+    });
+    document.getElementById(refreshId).addEventListener("click", function() {
+        if (document.getElementById(lastSearchId).innerHTML !== document.getElementById(searchId).value) {
+            document.getElementById(curPageId).innerText = "1";
+        }
+        document.getElementById(lastSearchId).value = document.getElementById(searchId).value;
+        onChange(parseInt(document.getElementById(curPageId).innerText) - 1,
+            parseInt(document.getElementById(sizeId).value), searchTransformer(document.getElementById(searchId).value),
+            document.getElementById(sortId).innerText);
+    });
+    onChange(0, 10, searchTransformer(document.getElementById(searchId).value), "");
+}
+
+function buildChild(elem, tag) {
+    let child = elemBuilder(tag);
+    elem.appendChild(child);
+    return child;
+}
+
+function buildClass(elem, classOrClasses) {
+   if (!Array.isArray(classOrClasses)) {
+       classOrClasses = [classOrClasses];
+   }
+
+   for (let curClass in classOrClasses) {
+       elem.classList.add(classOrClasses[curClass]);
+   }
+
+   return elem;
+}
+
+function buildOlderSibling(elem, tag) {
+    let sibling = elemBuilder(tag);
+    elem.parentNode.insertBefore(sibling, elem);
+    return sibling;
+}
+
+function buildSibling(elem, tag) {
+    let sibling = elemBuilder(tag);
+    elem.after(sibling);
+    return sibling;
+}
+
+function buildAttr(elem, attr, value) {
+    elem.setAttribute(attr, value);
+    return elem;
+}
+
+function buildText(elem, text) {
+    elem.innerText = text;
+    return elem;
+}
+
+function buildHTML(elem, html) {
+    elem.innerHTML += html;
+    return elem;
+}
+
+export function tupleToObject(row, columns) {
+    let obj = {};
+    for (let i2 = 0; i2 < columns.length; i2 ++) {
+        if (columns[i2].constructor === Object) {
+            let objKey = Object.keys(columns[i2])[0];
+            let subResponse = {};
+            subResponse[KEY_COLUMNS] = columns[i2][objKey];
+            subResponse[KEY_ROWS] = row[i2];
+            obj[objKey] = tuplesToObjects(subResponse);
+        } else {
+            obj[columns[i2]] = row[i2];
+        }
+    }
+    return obj;
+}
+
+export function tuplesToObjects(response) {
+    let columns = response[KEY_COLUMNS];
+    let rows = response[KEY_ROWS];
+    let ret = [];
+
+    for (let i = 0; i < rows.length; i ++) {
+        ret.push(tupleToObject(rows[i], columns));
+    }
+
+    return ret;
+}
+
+export function objectsToTuples(response) {
+    let ret = {};
+    ret[KEY_COLUMNS] = [];
+    ret[KEY_ROWS] = [];
+    for (let i = 0; i < response.length; i ++) {
+        if (i === 0) {
+            ret[KEY_COLUMNS] = Object.keys(response[i]);
+        }
+        let row = [];
+        for (let i2 = 0; i2 < ret[KEY_COLUMNS].length; i2 ++) {
+            row.push(response[i][ret[KEY_COLUMNS][i2]]);
+        }
+        ret[KEY_ROWS].push(row);
+    }
+    return ret;
+}
+
+export function tableRenderer(data, table, rowRenderer) {
+    let oldSortCol = null;
+    let oldSortDir = null;
+
+    if (!table) {
+        table = elemBuilder(table);
+        document.body.appendChild(table);
+    } else {
+        let oldHeaders = table.getElementsByClassName(CLS_JEQL_TABLE_HEADER_SORT);
+        for (let i = 0; i < oldHeaders.length; i ++) {
+            let span = oldHeaders[i].getElementsByClassName(CLS_JEQL_TABLE_HEADER_SORT_SPAN)[0];
+            if (span.getAttribute(ATTR_JEQL_SORT_DIRECTION) !== SORT_DEFAULT) {
+                oldSortCol = oldHeaders[i].childNodes[0].data;
+                oldSortDir = span.getAttribute(ATTR_JEQL_SORT_DIRECTION);
+            }
+        }
+        table.innerHTML = "";
+        makeBuildable(table);
+    }
+    let isPagingTable = table.getAttribute(ATTR_JEQL_PAGING_TABLE);
+    let header = table.buildChild("tr");
+    for (let idx in Object.keys(data[KEY_COLUMNS])) {
+        let headerText = formatAsTableHeader(data[KEY_COLUMNS][idx]);
+        let th = header.buildChild("th").buildClass(CLS_JEQL_TABLE_HEADER).buildText(headerText);
+        if (isPagingTable) {
+            th.buildClass(CLS_JEQL_TABLE_HEADER_SORT);
+            let span = th.buildChild("span").buildClass(CLS_JEQL_TABLE_HEADER_SORT_SPAN).buildHTML(
+                SORT_DEFAULT).buildAttr(ATTR_JEQL_SORT_DIRECTION, SORT_DEFAULT);
+            if (headerText === oldSortCol) {
+                span.buildAttr(ATTR_JEQL_SORT_DIRECTION, oldSortDir);
+                span.innerHTML = oldSortDir;
+            }
+            th.buildEventListener().buildEventListener("click", function() {
+                if (span.getAttribute(ATTR_JEQL_SORT_DIRECTION) === SORT_DEFAULT) {
+                    span.innerHTML = SORT_ASC;
+                    span.setAttribute(ATTR_JEQL_SORT_DIRECTION, SORT_ASC);
+                    let sorts = table.getElementsByClassName(CLS_JEQL_TABLE_HEADER_SORT_SPAN);
+                    for (let i = 0; i < sorts.length; i ++) {
+                        if (sorts[i] !== span) {
+                            sorts[i].setAttribute(ATTR_JEQL_SORT_DIRECTION, SORT_DEFAULT);
+                            sorts[i].innerHTML = SORT_DEFAULT;
+                        }
+                    }
+                    setPagedSearchingTableSortField(table.id, data[KEY_COLUMNS][idx] + " ASC");
+                } else if (span.getAttribute(ATTR_JEQL_SORT_DIRECTION) === SORT_ASC) {
+                    span.innerHTML = SORT_DESC;
+                    span.setAttribute(ATTR_JEQL_SORT_DIRECTION, SORT_DESC);
+                    setPagedSearchingTableSortField(table.id, data[KEY_COLUMNS][idx] + " DESC");
+                } else /*if (span.getAttribute(ATTR_JEQL_SORT_DIRECTION) === SORT_DESC)*/ {
+                    span.innerHTML = SORT_DEFAULT;
+                    span.setAttribute(ATTR_JEQL_SORT_DIRECTION, SORT_DEFAULT);
+                    setPagedSearchingTableSortField(table.id, "");
+                }
+                getPagedSearchingTableRefreshButton(table.id).click();
+            });
+        }
+    }
+    header.buildChild("th");
+    for (let idx in data[KEY_ROWS]) {
+        let row = table.buildChild("tr");
+        let defaultRowRenderer = function () {
+            for (let key in data[KEY_ROWS][idx]) {
+                row.buildChild("td").buildText(data[KEY_ROWS][idx][key]);
+            }
+        };
+        if (rowRenderer) {
+            rowRenderer(row, data, idx, defaultRowRenderer);
+        } else {
+            defaultRowRenderer();
+        }
+    }
+}
+
+function buildBoolean(elem, attr, doBuild) {
+    if (doBuild) {
+        elem.setAttribute(attr, attr);
+    }
+    return elem;
+}
+
+function buildEventListener(elem, event, onevent) {
+    elem.addEventListener(event, onevent);
+    return elem;
+}
+
+export function makeBuildable(elem) {
+    elem.removeElement = function() { elem.parentNode.removeChild(elem); }
+    elem.buildClass = function(classOrClasses) { return buildClass(elem, classOrClasses); };
+    elem.buildAttr = function(attr, value) { return buildAttr(elem, attr, value); };
+    elem.buildBoolean = function(attr, doBuild) { return buildBoolean(elem, attr, doBuild); };
+    elem.buildText = function(text) { return buildText(elem, text); };
+    elem.buildHTML = function(html) { return buildHTML(elem, html); };
+    elem.buildChild = function(tag) { return buildChild(elem, tag); };
+    elem.buildRow = function() { return buildChild(elem, "tr"); };
+    elem.buildForeach = function(iterable, lambda) {
+        for (let i = 0; i < iterable.length; i ++) {
+            elem.buildHTML(lambda(iterable[i]));
+        }
+        return elem;
+    };
+    elem.getParent = function() { return makeBuildable(elem.parentNode); };
+    elem.buildSibling = function(tag) { return buildSibling(elem, tag); };
+    elem.buildEventListener = function(event, onevent) { return buildEventListener(elem, event, onevent); };
+    elem.buildOlderSibling = function(tag) { return buildOlderSibling(elem, tag); };
+    return elem;
+}
+
+export function elemBuilder(tag) {
+    let ret = document.createElement(tag);
+    makeBuildable(ret);
+    return ret;
+}
+
+function xHttpSetAuth(config, xhttp) {
+    xhttp.setRequestHeader("Authentication-Token", config.authToken);
+}
+
+export function renderModal(modalBodyRender, allowClose = true, modalBaseClass = CLS_MODAL,
+                            modalAdditionalClass = null) {
+    let outerDiv = document.createElement("div");
+    document.body.appendChild(outerDiv);
+    outerDiv.setAttribute("class", CLS_MODAL_OUTER);
+
+    let modalDiv = elemBuilder("div");
+    outerDiv.appendChild(modalDiv);
+    modalDiv.classList.add(modalBaseClass);
+    if (modalAdditionalClass !== null) {
+        modalDiv.classList.add(modalAdditionalClass);
+    }
+
+    if (allowClose) {
+        outerDiv.classList.add(CLS_CURSOR_POINTER);
+        let modalClose = elemBuilder("span").buildClass(CLS_MODAL_CLOSE).buildHTML("&times;");
+        modalDiv.appendChild(modalClose);
+        modalClose.addEventListener("click", function() { document.body.removeChild(outerDiv); });
+        outerDiv.addEventListener("click", function(event) {
+            if (event.target === outerDiv) {
+                document.body.removeChild(outerDiv);
+            }
+        }, false);
+    }
+
+    let subDiv = modalDiv.buildChild("div");
+    subDiv.closeModal = function() { outerDiv.parentElement.removeChild(outerDiv); };
+    modalBodyRender(subDiv);
+}
+
+export function renderModalOk(msg, onOk = null, title = "Success!") {
+    if (!onOk) { onOk = function() {  }; }
+    renderModal(function(modal) {
+        let oldFunc = modal.closeModal;
+        modal.closeModal = function() {
+            oldFunc();
+            onOk();
+        };
+        modal.buildHTML(`
+            <h1>${title}</h1>
+            ${msg}
+        `).buildChild("button").buildText("Ok").buildClass(CLS_BUTTON).buildEventListener("click", function() {
+            modal.closeModal();
+        });
+    }, false);
+}
+
+export function renderModalError(errMsg, errTitle = "Error!") {
+
+}
+
+export function renderModalAreYouSure(msg, yesFunc, title = "Are you sure?", yesButtonText = "Yes",
+                                      noButtonText = "No") {
+    renderModal(function(modal) {
+        modal.buildHTML(`
+            <h1>${title}</h1>
+            ${msg}
+        `).buildChild("button").buildText(yesButtonText).buildClass([CLS_BUTTON, CLS_BUTTON_YES]).buildEventListener(
+            "click",
+            function() {
+                modal.closeModal();
+                yesFunc();
+            }
+        ).buildSibling("button").buildText(noButtonText).buildClass([CLS_BUTTON, CLS_BUTTON_NO]).buildEventListener(
+            "click",
+            modal.closeModal);
+    }, false);
+}
+
+function bindButton(eleId, buttonId) {
+    document.getElementById(eleId).addEventListener("keyup", function(event) {
+        if (event.keyCode === 13) {
+            event.preventDefault();
+            document.getElementById(buttonId).click();
+        }
+    });
+}
+
+function setMFAKey(curId, nextId, nextFunc = null) {
+    if (nextFunc === null) {
+        nextFunc = function() { document.getElementById(nextId).focus(); };
+    }
+    document.getElementById(curId).onkeypress = function(event) {
+        if (Number.parseInt(event.key) || Number.parseInt(event.key) === 0) {
+            document.getElementById(curId).value = event.key;
+            nextFunc();
+        } else {
+            event.preventDefault();
+        }
+    };
+}
+
+function getLoginData(isMFA) {
+    let ret = {};
+
+    if (isMFA) {
+        ret[KEY_MFA_KEY] = document.getElementById(ID_MFA_0).value + document.getElementById(ID_MFA_1).value +
+            document.getElementById(ID_MFA_2).value + document.getElementById(ID_MFA_3).value +
+            document.getElementById(ID_MFA_4).value + document.getElementById(ID_MFA_5).value;
+        ret[KEY_PRE_AUTH_KEY] = isMFA;
+    } else {
+        ret[KEY_USERNAME] = document.getElementById(ID_USERNAME).value;
+        ret[KEY_PASSWORD] = document.getElementById(ID_PASSWORD).value;
+    }
+
+    return ret;
+}
+
+function handleLoginError(modal, loginErrMsg) {
+    document.getElementById(ID_LOGIN_ERROR).innerHTML = loginErrMsg + "<br>";
+    let inputs = modal.getElementsByClassName(CLS_INPUT);
+
+    for (let inp in inputs) {
+        if (inputs.hasOwnProperty(inp)) {
+            inputs[inp].style.borderColor = "red";
+        }
+    }
+}
+
+function rendererMFALogin(modal, mainLoginDiv, config, callback, preAuthKey) {
+    mainLoginDiv.buildHTML(`
+        <span id=${ID_LOGIN_ERROR} style="color: red"></span>
+        <br>
+        <label class="jeql-strong">
+            2FA
+            <br>
+            <div style="width: 100%; display: flex; gap: 1%">
+                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_0} maxlength="1" size="1">
+                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_1} maxlength="1" size="1">
+                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_2} maxlength="1" size="1">
+                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_3} maxlength="1" size="1">
+                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_4} maxlength="1" size="1">
+                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_5} maxlength="1" size="1">
+            </div>
+        </label>
+    `);
+
+    setMFAKey(ID_MFA_0, ID_MFA_1);
+    setMFAKey(ID_MFA_1, ID_MFA_2);
+    setMFAKey(ID_MFA_2, ID_MFA_3);
+    setMFAKey(ID_MFA_3, ID_MFA_4);
+    setMFAKey(ID_MFA_4, ID_MFA_5);
+    setMFAKey(ID_MFA_5, null, function() {
+        document.getElementById(ID_LOGIN_BUTTON).click()
+    });
+
+    bindButton(ID_MFA_5, ID_LOGIN_BUTTON);
+
+    document.getElementById(ID_LOGIN_BUTTON).addEventListener("click", function() {
+        requests.makeJson(config, ACTION_LOGIN, function(loginErrMsg) {
+            if (loginErrMsg) {
+                handleLoginError(modal, loginErrMsg);
+                document.getElementById(ID_MFA_0).focus();
+                document.getElementById(ID_MFA_0).value = "";
+                document.getElementById(ID_MFA_1).value = "";
+                document.getElementById(ID_MFA_2).value = "";
+                document.getElementById(ID_MFA_3).value = "";
+                document.getElementById(ID_MFA_4).value = "";
+                document.getElementById(ID_MFA_5).value = "";
+            } else {
+                modal.closeModal();
+                callback();
+            }
+        }, getLoginData(preAuthKey));
+    });
+
+    document.getElementById(ID_MFA_0).focus();
+}
+
+function rendererLogin(modal, config, callback, errMsg) {
+    modal.id = ID_LOGIN_MODAL;
+    modal.appendChild(elemBuilder("div").buildClass(CLS_CENTER).buildHTML(`
+        <h1>
+            Login
+        </h1>
+    `));
+
+    let mainLoginDiv = elemBuilder("div").buildHTML(`
+        <span id=${ID_LOGIN_ERROR} style="color: red"></span>
+        <br>
+        <label class="jeql-strong">
+            Username
+            <input class="${CLS_INPUT} jeql-input-full" type="text" placeholder="Enter username" id=${ID_USERNAME}>
+        </label>
+        <label class="jeql-strong">
+            Password 
+            <input class="${CLS_INPUT} jeql-input-full" type="password" placeholder="Enter password" id=${ID_PASSWORD}>
+        </label>
+    `);
+    modal.appendChild(mainLoginDiv);
+    if (errMsg) {
+        document.getElementById(ID_LOGIN_ERROR).innerHTML = errMsg + "<br>";
+    }
+
+    let rememberMeBox = modal.buildChild("div").buildHTML(`
+        <label for=${ID_REMEMBER_ME}>Remember me</label>
+        <input type="checkbox" id=${ID_REMEMBER_ME}>
+    `);
+    rememberMeBox.checked = config.rememberMe;
+
+    let createLoginButton = function(buttonDiv) {
+        return buttonDiv
+            .buildChild("button")
+            .buildClass(CLS_BUTTON)
+            .buildText("Login")
+            .buildAttr("id", ID_LOGIN_BUTTON);
+    }
+    let buttonDiv = elemBuilder("div");
+    let button = createLoginButton(buttonDiv);
+    modal.appendChild(buttonDiv);
+    button.addEventListener("click", function() {
+        if (document.getElementById(ID_REMEMBER_ME).checked !== config.rememberMe) {
+            config.logout(false, true);
+            config.setRememberMe(document.getElementById(ID_REMEMBER_ME).checked);
+        }
+        requests.makeJson(config, ACTION_LOGIN, function(loginErrMsg, mfaNext) {
+            if (mfaNext) {
+                mainLoginDiv.innerHTML = "";
+                rememberMeBox.removeElement();
+                let mfaError = mainLoginDiv.buildChild("span")
+                    .buildAttr("style", "display: none");
+                buttonDiv.innerHTML = "";
+                let backButton = buttonDiv.buildChild("button")
+                    .buildClass(CLS_BUTTON)
+                    .buildText("Back");
+                createLoginButton(buttonDiv);
+                setTimeout(function() {
+                    mfaError.innerText = ERR_MFA_TIMEOUT_OCCURRED;
+                    backButton.click();
+                }, AUTH_MFA_EXPIRY_MS);
+                backButton.addEventListener("click", function() {
+                    modal.closeModal();
+                    let mfaErrMsg = null;
+                    if (mfaError.innerText.length !== 0) {
+                        mfaErrMsg = mfaError.innerText;
+                    }
+                    showLoginModal(config, callback, mfaErrMsg);
+                });
+                rendererMFALogin(modal, mainLoginDiv, config, callback, loginErrMsg);
+            } else if (loginErrMsg) {
+                handleLoginError(modal, loginErrMsg);
+                document.getElementById(ID_USERNAME).focus();
+            } else {
+                modal.closeModal();
+                callback();
+            }
+        }, getLoginData());
+    });
+    bindButton(ID_USERNAME, ID_LOGIN_BUTTON);
+    bindButton(ID_PASSWORD, ID_LOGIN_BUTTON);
+    document.getElementById(ID_USERNAME).focus();
+    if (config.credentials) {
+        button.click();
+    }
+}
+
+function showLoginModal(config, callback, errMsg) {
+    if (config.credentials) {
+        requests.makeJson(config, ACTION_LOGIN, callback, config.credentials);
+    } else {
+        renderModal(
+            function(modal) { rendererLogin(modal, config, callback, errMsg); },
+            false);
+    }
+}
+
+function onRefreshToken(config, callback) {
+    requests.makeEmpty(config, config.refreshAction, callback);
+}
+
+export function formatAsTableHeader(inStr) {
+    let formatted = "";
+    let lastChar = "_";
+    for (let i = 0; i < inStr.length; i ++) {
+        let char = inStr[i];
+        formatted += lastChar === "_" ? char.toUpperCase() : char;
+        lastChar = char;
+    }
+    return formatted.replace("_", " ");
+}
+
+function findGetParameter(parameterName) {
+    let result = null, tmp = [];
+    location.search
+        .substr(1)
+        .split("&")
+        .forEach(function (item) {
+            tmp = item.split("=");
+            if (tmp[0] === parameterName) { result = decodeURIComponent(tmp[1]); }
+        });
+    return result;
+}
+
+function getJaaqlUrl() {
+    let jaaqlUrl = findGetParameter(PARAMETER_JAAQL);
+    if (jaaqlUrl !== null) { return jaaqlUrl; }
+
+    let callLoc = window.location.protocol;
+    if (callLoc === PROTOCOL_FILE) {
+        callLoc = LOCAL_DEBUGGING_URL;
+    } else {
+        callLoc += "/api"
+    }
+
+    return callLoc;
+}
+
+function decodeJWT(jwt) {
+    let asBase64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    let json = decodeURIComponent(atob(asBase64).split('').map(function(char) {
+        return '%' + ('00' + char.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+
+    return JSON.parse(json);
+}
+
+function getJsonArrayFromStorage(storage, storageKey) {
+    let storageObj = storage.getItem(storageKey);
+    if (storageObj === null) {
+        storageObj = {};
+        storage.setItem(storageKey, JSON.stringify(storageObj));
+    } else {
+        storageObj = JSON.parse(storageObj);
+    }
+    return storageObj;
+}
+
+function getAppConfig(config, allowFromUrl = false) {
+    try {
+        let application = config.getApplicationName();
+        let appConfig = null;
+        if (allowFromUrl) {
+            appConfig = findGetParameter(PARAMETER_CONFIGURATION);
+        }
+        let storedAppConfigs = getJsonArrayFromStorage(config.getStorage(), STORAGE_JAAQL_CONFIGS);
+
+        if (appConfig === null) {
+            let appConfigsForConfig = {};
+            if (config.base in storedAppConfigs) {
+                appConfigsForConfig = storedAppConfigs[config.base];
+            } else {
+                storedAppConfigs[config.base] = appConfigsForConfig;
+            }
+
+            if (application in appConfigsForConfig) {
+                appConfig = appConfigsForConfig[application];
+            } else {
+                appConfigsForConfig[application] = appConfig;
+            }
+        } else {
+            appConfig = appConfig.split(",");  //Stored as multiple JWTs, comma separated
+            let configName = appConfig.shift();
+
+            let configMap = (token) => ({[decodeJWT(token)[JWT_KEY_CONFIG_NAME]]: token});
+            configMap = Object.assign({}, ...appConfig.map(configMap));
+            appConfig = {};
+            appConfig[KEY_NAME] = configName;
+            appConfig[KEY_CONNECTIONS] = configMap;
+
+            let appConfigsForConfig = {};
+            if (config.base in storedAppConfigs) {
+                appConfigsForConfig = storedAppConfigs[config.base];
+            } else {
+                storedAppConfigs[config.base] = appConfigsForConfig;
+            }
+
+            appConfigsForConfig[application] = appConfig;
+        }
+        config.getStorage().setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(storedAppConfigs));
+
+        return appConfig;
+    } catch (err) {
+        // Something has gone wrong
+        console.error(ERR_WIPING_CONFIG);
+        console.error(err);
+        console.getStorage().removeItem(STORAGE_JAAQL_CONFIGS);
+    }
+}
+
+function selectAppConfig(config, callback, chosenConfig) {
+    let callData = {};
+    callData[KEY_APPLICATION] = config.getApplicationName();
+    callData[KEY_CONFIGURATION] = chosenConfig;
+
+    let updateStoredAppConfigs = function(config, callback, chosenConfig, connections) {
+        let connectionLookup = {};
+        for (let idx in connections) {
+            connectionLookup[connections[idx][KEY_DATASET]] = connections[idx][KEY_CONNECTION];
+        }
+
+        let configObj = {};
+        configObj[KEY_CONNECTIONS] = connectionLookup;
+        configObj[KEY_NAME] = chosenConfig;
+        let storedAppConfigs = getJsonArrayFromStorage(config.getStorage(), STORAGE_JAAQL_CONFIGS);
+        storedAppConfigs[config.base][config.getApplicationName()] = configObj;
+        config.getStorage().setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(storedAppConfigs));
+
+        callback(config);
+    };
+
+    requests.makeBody(config, ACTION_CONFIGURATIONS_ASSIGNED_DATABASES,
+        function(connections) { updateStoredAppConfigs(config, callback, chosenConfig, connections); },
+        callData);
+}
+
+function resetAppConfig(config, afterSelectAppConfig = null) {
+    if (afterSelectAppConfig === null) {
+        afterSelectAppConfig = function() {
+            console.error(ERR_IMPERATIVE_APP_CONFIG_FAILED);
+        };
+    }
+
+    let data = {};
+    data[KEY_APPLICATION] = config.getApplicationName();
+    requests.makeBody(config, ACTION_CONFIGURATIONS,
+        function (data) {
+            renderSelectAppConfig(config, afterSelectAppConfig, data);
+        },
+        data);
+}
+
+export function getOrSelectAppConfig(config, afterSelectAppConfig = null, allowFromUrl = false,
+                                     preventRecursion = false) {
+    let newAfterSelectAppConfig = afterSelectAppConfig;
+
+    if (afterSelectAppConfig) {
+        let curScriptParent = scriptParent();
+        newAfterSelectAppConfig = function (...args) {
+            document.currentScriptParent = curScriptParent;
+            config.releaseQueues();
+            afterSelectAppConfig(...args);
+        }
+    }
+
+    let appConfig = getAppConfig(config, allowFromUrl);
+
+    if (appConfig !== null && appConfig.constructor === Object && KEY_CONNECTIONS in appConfig &&
+        KEY_NAME in appConfig) {
+        if (newAfterSelectAppConfig) {
+            newAfterSelectAppConfig(config);
+            return;
+        } else {
+            config.releaseQueues();
+            return appConfig;
+        }
+    }
+
+    if (!preventRecursion) {
+        resetAppConfig(config, newAfterSelectAppConfig);
+    }
+
+    let fallback = {};
+    fallback[KEY_CONNECTIONS] = {};
+    fallback[KEY_NAME] = null;
+    return fallback;
+}
+
+function storeJEQLDataToElement(elem, data) {
+    elem.setAttribute(ATTR_JEQL_DATA, btoa(JSON.stringify(data)));
+}
+
+function extractJEQLDataFromElement(elem) {
+    return JSON.parse(atob(elem.getAttribute(ATTR_JEQL_DATA)));
+}
+
+export function scriptParent() {
+    if (document.currentScript) {
+        return document.currentScript.parentElement;
+    } else if (document.hasOwnProperty("currentScriptParent")) {
+        return document.currentScriptParent;
+    } else {
+        return document.currentScript;
+    }
+}
+
+export function foreach(query, renderer) {
+    if (query.constructor !== Object) {
+        query = formQuery(window.JEQL_CONFIG, query);
+    }
+    let currentScriptParent = scriptParent();
+    submit(window.JEQL_CONFIG, query, function(data) {
+        document.currentScriptParent = currentScriptParent;
+        for (let i = 0; i <  data[KEY_ROWS].length; i ++) {
+            renderer(tupleToObject(data[KEY_ROWS][i], data[KEY_COLUMNS]));
+        }
+    });
+}
+
+export function render(formedQuery, renderFunc, config) {
+    let formedRenderFunc = renderFunc;
+
+    if (renderFunc.constructor === Object) {
+        formedRenderFunc = function(data) {
+            let body = null;
+            let doAlternative = data[KEY_ROWS].length === 0;
+
+            if (doAlternative) {
+                if (JEQL_FIESTA_ALTERNATIVE in renderFunc) {
+                    renderFunc[JEQL_FIESTA_ALTERNATIVE](data[KEY_COLUMNS]);
+                }
+            } else {
+                if (JEQL_FIESTA_INTRODUCER in renderFunc) {
+                    body = renderFunc[JEQL_FIESTA_INTRODUCER](data[KEY_COLUMNS]);
+                }
+                for (let i = 0; i < data[KEY_ROWS].length; i ++) {
+                    if (JEQL_FIESTA_EXPRESSION in renderFunc) {
+                        renderFunc[JEQL_FIESTA_EXPRESSION](data[KEY_ROWS][i], body);
+                    }
+                    if (JEQL_FIESTA_SEPARATOR in renderFunc) {
+                        renderFunc[JEQL_FIESTA_SEPARATOR](data[KEY_ROWS][i], body);
+                    }
+                }
+                if (JEQL_FIESTA_TERMINATOR in renderFunc) {
+                    renderFunc[JEQL_FIESTA_TERMINATOR](data[KEY_COLUMNS], body);
+                }
+            }
+        }
+    }
+
+    if (!config) { config = window.JEQL_CONFIG; }
+
+    submit(window.JEQL_CONFIG, formedQuery, formedRenderFunc);
+}
+
+function renderSelectAppConfig(config, callback, data) {
+    if (data.length === 1) {
+        selectAppConfig(config, callback, data[0][KEY_CONFIGURATION])
+    } else if (data.length === 0) {
+        console.error(ERR_NO_FOUND_CONFIGURATION_FOR_USER);
+    } else {
+        renderModal(function (modal) {
+            let curAppConfig = getOrSelectAppConfig(config, null, false, true)[KEY_NAME];
+
+            modal.appendChild(elemBuilder("h1").buildText("Select Configuration"));
+            let table = elemBuilder("table");
+            modal.appendChild(table);
+            let header = table.buildChild("tr");
+            for (let idx in Object.keys(data[0])) {
+                header.buildChild("th").buildText(formatAsTableHeader(Object.keys(data[0])[idx]));
+            }
+            header.buildChild("th");
+            for (let idx in data) {
+                let row = table.buildChild("tr");
+                if (data[idx][KEY_CONFIGURATION] === curAppConfig) {
+                    row.buildClass(CLS_SELECTED_APP_CONFIG);
+                }
+                for (let key in data[idx]) {
+                    row.buildChild("td").buildText(data[idx][key]);
+                }
+                row.buildChild("td").buildHTML(`
+                    <button id="${ID_SELECT_APP_CONFIG + idx}" class="${CLS_BUTTON}">Select</button>
+                `);
+                storeJEQLDataToElement(document.getElementById(ID_SELECT_APP_CONFIG + idx), data[idx]);
+                document.getElementById(ID_SELECT_APP_CONFIG + idx).addEventListener("click", function (event) {
+                    modal.closeModal();
+                    selectAppConfig(config, callback, extractJEQLDataFromElement(event.target)[KEY_CONFIGURATION]);
+                });
+            }
+        }, false, CLS_MODAL_WIDE);
+    }
+}
+
+function renderAccountBanner(config) {
+    // TODO render something that allows you to select configurations and access the account app
+}
+
+export function initAsPublic() {
+    // TODO initialise with supplied credentials, do not render account banner
+}
+
+export function fetchMyApplications(config, callback) {
+    requests.makeEmpty(config, ACTION_FETCH_APPLICATIONS, callback);
+}
+
+export function getAppUrl(config, appName) {
+    let data = {};
+    data[KEY_SEARCH] = `%${KEY_APPLICATION} LIKE '%${appName}'`;
+    fetchMyApplications(config,
+        function(data) {
+            data = data[KEY_DATA];
+            for (let idx in data) {
+                if (data[idx][KEY_NAME] === appName) {
+                    return data[idx][KEY_URL];
+                }
+            }
+            throw ERR_COULD_NOT_FIND_APPLICATION_WITH_NAME + `'${appName}'`;
+        }
+    );
+}
+
+function setConnection(config, json) {
+    let dataset = json[KEY_CONNECTION]
+    let appConfig = getOrSelectAppConfig(config)[KEY_CONNECTIONS];
+
+    if (dataset === null) {
+        if (Object.keys(appConfig).length > 1) {
+            throw new Error("Must supply dataset as multiple datasets exist");
+        } else if (appConfig.length === 0) {
+            resetAppConfig(config);
+        }
+        json[KEY_CONNECTION] = appConfig[Object.keys(appConfig)[0]];
+    } else {
+        if (dataset in appConfig) {
+            json[KEY_CONNECTION] = appConfig[dataset];
+        } else {
+            throw new Error("Dataset '" + dataset + " does not exist");
+        }
+    }
+}
+
+export function initPublic(application, onLoad, credentials, jaaqlUrl = null) {
+    init(application, onLoad, false, jaaqlUrl, credentials);
+}
+
+export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl = null,
+                     credentials = null) {
+    if (!onLoad) { onLoad = function() {  }; }
+    if (jaaqlUrl === null) { jaaqlUrl = getJaaqlUrl(); }
+
+    let setAuthTokenFunc = function(storage, authToken) {
+        let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
+        jaaqlTokens[jaaqlUrl] = authToken;
+        storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
+    };
+    let logoutFunc = function(storage, doReload, doCopy, invertedStorage) {
+        if (doCopy) {
+            invertedStorage.setItem(STORAGE_JAAQL_TOKENS, storage.getItem(STORAGE_JAAQL_TOKENS));
+            invertedStorage.setItem(STORAGE_JAAQL_CONFIGS, storage.getItem(STORAGE_JAAQL_CONFIGS));
+        }
+        storage.removeItem(STORAGE_JAAQL_TOKENS);
+        storage.removeItem(STORAGE_JAAQL_CONFIGS);
+        if (doReload) {
+            window.location.reload();
+        }
+    };
+    let config = new requests.RequestConfig(application, jaaqlUrl, ACTION_LOGIN, ACTION_REFRESH, showLoginModal,
+        onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, setAuthTokenFunc,
+        logoutFunc);
+    if (credentials) {
+        config.setCredentials(credentials);
+    }
+    window.JEQL_CONFIG = config;
+    config.setRememberMe(window.localStorage.getItem(STORAGE_JAAQL_TOKENS) !== null);
+
+    let jaaqlTokens = getJsonArrayFromStorage(config.getStorage(), STORAGE_JAAQL_TOKENS);
+    let authToken = null;
+    if (config.base in jaaqlTokens) {
+        authToken = jaaqlTokens[config.base];
+    }
+    config.authToken = authToken;
+
+    if (doRenderAccountBanner) {
+        renderAccountBanner(config);
+    }
+
+    getOrSelectAppConfig(config.clone(), onLoad, true);
+
+    return config;
+}
+
+function callbackDoNotRefreshConnections(res, config) {
+    resetAppConfig(config, function() { console.error(ERR_COULD_NOT_REFRESH_APP_CONFIG); })
+}
+
+function expiredConnectionHandler(res, config, action, renderFunc, body, json) {
+    let appConfig = getOrSelectAppConfig(config);
+    let reverseMap = {};
+    for (let idx in appConfig[KEY_CONNECTIONS]) {
+        reverseMap[appConfig[KEY_CONNECTIONS][idx]] = idx;
+    }
+
+    selectAppConfig(config,
+        function() {
+            let newAppConfig = getOrSelectAppConfig(config);
+            if (json) {
+                json = JSON.parse(json);
+            } else {
+                json = requests.urlEncodedToJson(body);
+            }
+
+            let wasArray = true;
+            if (!Array.isArray(json)) {
+                wasArray = false;
+                json = [json];
+            }
+
+            for (let idx in json) {
+                json[idx][KEY_CONNECTION] = newAppConfig[KEY_CONNECTIONS][reverseMap[json[idx][KEY_CONNECTION]]];
+            }
+
+            if (!wasArray) {
+                json = json[0];
+            }
+
+            if (body) {
+                body = requests.jsonToUrlEncoded(json);
+                json = undefined;
+            }
+
+            let newRenderFuncs = {...renderFunc};
+            newRenderFuncs[HTTP_STATUS_CONNECTION_EXPIRED] = callbackDoNotRefreshConnections;
+
+            requests.make(config, action, newRenderFuncs, body, json);
+        },
+        appConfig[KEY_NAME]);
+}
+
+export function formQuery(config, query, queryParameters = null, dataset = null, database = null) {
+    if (queryParameters === null) { queryParameters = {}; }
+
+    let formed = {};
+    formed[KEY_QUERY] = query;
+    formed[KEY_PARAMETERS] = queryParameters;
+    formed[KEY_CONNECTION] = dataset;
+    formed[KEY_DATABASE] = database;
+    return formed;
+}
+
+export function submitFile(config, input, renderFunc) {
+    submit(config, input, renderFunc, false, true);
+}
+
+export function submit(config, input, renderFunc, doNotRefresh = false, asFile = false) {
+    let oldRenderFunc = renderFunc;
+    if (renderFunc.constructor !== Object) {
+        renderFunc = {};
+        renderFunc[HTTP_STATUS_OK] = oldRenderFunc;
+    }
+    renderFunc[HTTP_STATUS_CONNECTION_EXPIRED] = doNotRefresh ?
+        callbackDoNotRefreshConnections :
+        expiredConnectionHandler;
+    requests.makeJson(config, asFile ? ACTION_SUBMIT_FILE : ACTION_SUBMIT, renderFunc, input);
+}
