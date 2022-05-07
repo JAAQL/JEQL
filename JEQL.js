@@ -767,7 +767,7 @@ function rendererLogin(modal, config, callback, errMsg) {
     button.addEventListener("click", function() {
         if (document.getElementById(ID_REMEMBER_ME).checked !== config.rememberMe) {
             config.logout(false, true);
-            config.rememberMe = document.getElementById(ID_REMEMBER_ME).checked;
+            config.setRememberMe(document.getElementById(ID_REMEMBER_ME).checked);
         }
         requests.makeJson(config, ACTION_LOGIN, function(loginErrMsg, mfaNext) {
             if (mfaNext) {
@@ -805,12 +805,19 @@ function rendererLogin(modal, config, callback, errMsg) {
     bindButton(ID_USERNAME, ID_LOGIN_BUTTON);
     bindButton(ID_PASSWORD, ID_LOGIN_BUTTON);
     document.getElementById(ID_USERNAME).focus();
+    if (config.credentials) {
+        button.click();
+    }
 }
 
 function showLoginModal(config, callback, errMsg) {
-    renderModal(
-        function(modal) { rendererLogin(modal, config, callback, errMsg); },
-        false);
+    if (config.credentials) {
+        requests.makeJson(config, ACTION_LOGIN, callback, config.credentials);
+    } else {
+        renderModal(
+            function(modal) { rendererLogin(modal, config, callback, errMsg); },
+            false);
+    }
 }
 
 function onRefreshToken(config, callback) {
@@ -970,20 +977,32 @@ function resetAppConfig(config, afterSelectAppConfig = null) {
 
 export function getOrSelectAppConfig(config, afterSelectAppConfig = null, allowFromUrl = false,
                                      preventRecursion = false) {
+    let newAfterSelectAppConfig = afterSelectAppConfig;
+
+    if (afterSelectAppConfig) {
+        let curScriptParent = scriptParent();
+        newAfterSelectAppConfig = function (...args) {
+            document.currentScriptParent = curScriptParent;
+            config.releaseQueues();
+            afterSelectAppConfig(...args);
+        }
+    }
+
     let appConfig = getAppConfig(config, allowFromUrl);
 
     if (appConfig !== null && appConfig.constructor === Object && KEY_CONNECTIONS in appConfig &&
         KEY_NAME in appConfig) {
-        if (afterSelectAppConfig !== null) {
-            afterSelectAppConfig(config);
+        if (newAfterSelectAppConfig) {
+            newAfterSelectAppConfig(config);
             return;
         } else {
+            config.releaseQueues();
             return appConfig;
         }
     }
 
     if (!preventRecursion) {
-        resetAppConfig(config, afterSelectAppConfig);
+        resetAppConfig(config, newAfterSelectAppConfig);
     }
 
     let fallback = {};
@@ -1000,13 +1019,23 @@ function extractJEQLDataFromElement(elem) {
     return JSON.parse(atob(elem.getAttribute(ATTR_JEQL_DATA)));
 }
 
-export function scriptParent() { return document.currentScript.parentElement; }
+export function scriptParent() {
+    if (document.currentScript) {
+        return document.currentScript.parentElement;
+    } else if (document.hasOwnProperty("currentScriptParent")) {
+        return document.currentScriptParent;
+    } else {
+        return document.currentScript;
+    }
+}
 
 export function foreach(query, renderer) {
     if (query.constructor !== Object) {
         query = formQuery(window.JEQL_CONFIG, query);
     }
+    let currentScriptParent = scriptParent();
     submit(window.JEQL_CONFIG, query, function(data) {
+        document.currentScriptParent = currentScriptParent;
         for (let i = 0; i <  data[KEY_ROWS].length; i ++) {
             renderer(tupleToObject(data[KEY_ROWS][i], data[KEY_COLUMNS]));
         }
@@ -1115,8 +1144,33 @@ export function getAppUrl(config, appName) {
     );
 }
 
-export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl = null) {
-    if (onLoad === null) { onLoad = function() {  }; }
+function setConnection(config, json) {
+    let dataset = json[KEY_CONNECTION]
+    let appConfig = getOrSelectAppConfig(config)[KEY_CONNECTIONS];
+
+    if (dataset === null) {
+        if (Object.keys(appConfig).length > 1) {
+            throw new Error("Must supply dataset as multiple datasets exist");
+        } else if (appConfig.length === 0) {
+            resetAppConfig(config);
+        }
+        json[KEY_CONNECTION] = appConfig[Object.keys(appConfig)[0]];
+    } else {
+        if (dataset in appConfig) {
+            json[KEY_CONNECTION] = appConfig[dataset];
+        } else {
+            throw new Error("Dataset '" + dataset + " does not exist");
+        }
+    }
+}
+
+export function initPublic(application, onLoad, credentials, jaaqlUrl = null) {
+    init(application, onLoad, false, jaaqlUrl, credentials);
+}
+
+export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl = null,
+                     credentials = null) {
+    if (!onLoad) { onLoad = function() {  }; }
     if (jaaqlUrl === null) { jaaqlUrl = getJaaqlUrl(); }
 
     let setAuthTokenFunc = function(storage, authToken) {
@@ -1136,9 +1190,13 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
         }
     };
     let config = new requests.RequestConfig(application, jaaqlUrl, ACTION_LOGIN, ACTION_REFRESH, showLoginModal,
-        onRefreshToken, xHttpSetAuth, setAuthTokenFunc, logoutFunc);
+        onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, setAuthTokenFunc,
+        logoutFunc);
+    if (credentials) {
+        config.setCredentials(credentials);
+    }
     window.JEQL_CONFIG = config;
-    config.rememberMe = window.localStorage.getItem(STORAGE_JAAQL_TOKENS) !== null;
+    config.setRememberMe(window.localStorage.getItem(STORAGE_JAAQL_TOKENS) !== null);
 
     let jaaqlTokens = getJsonArrayFromStorage(config.getStorage(), STORAGE_JAAQL_TOKENS);
     let authToken = null;
@@ -1154,25 +1212,6 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
     getOrSelectAppConfig(config.clone(), onLoad, true);
 
     return config;
-}
-
-function fetchConnection(config, dataset = null) {
-    let appConfig = getOrSelectAppConfig(config)[KEY_CONNECTIONS];
-
-    if (dataset === null) {
-        if (Object.keys(appConfig).length > 1) {
-            throw new Error("Must supply dataset as multiple datasets exist");
-        } else if (appConfig.length === 0) {
-            resetAppConfig(config);
-        }
-        return appConfig[Object.keys(appConfig)[0]];
-    } else {
-        if (dataset in appConfig) {
-            return appConfig[dataset];
-        } else {
-            throw new Error("Dataset '" + dataset + " does not exist");
-        }
-    }
 }
 
 function callbackDoNotRefreshConnections(res, config) {
@@ -1223,14 +1262,12 @@ function expiredConnectionHandler(res, config, action, renderFunc, body, json) {
 }
 
 export function formQuery(config, query, queryParameters = null, dataset = null, database = null) {
-    let connection = fetchConnection(config, dataset);
-
     if (queryParameters === null) { queryParameters = {}; }
 
     let formed = {};
     formed[KEY_QUERY] = query;
     formed[KEY_PARAMETERS] = queryParameters;
-    formed[KEY_CONNECTION] = connection;
+    formed[KEY_CONNECTION] = dataset;
     formed[KEY_DATABASE] = database;
     return formed;
 }

@@ -3,7 +3,7 @@ const path = require("path")
 module.exports = [{
   entry: path.resolve(__dirname, "_JEQL_pre_package.js"),
   output: {
-    path: path.resolve(__dirname, "dist"),
+    path: path.resolve(__dirname),
     filename: "JEQL_package.min.js",
     library: "JEQL",
     libraryTarget: "umd",
@@ -23,7 +23,7 @@ module.exports = [{
 {
   entry: path.resolve(__dirname, "_JEQL_pre_package.js"),
   output: {
-    path: path.resolve(__dirname, "dist"),
+    path: path.resolve(__dirname),
     filename: "JEQL_package.js",
     library: "JEQL",
     libraryTarget: "umd",

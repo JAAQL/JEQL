@@ -5,8 +5,8 @@ let HTTP_STATUS_DEFAULT = "DEFAULT"; export {HTTP_STATUS_DEFAULT};
 
 export class RequestConfig {
     constructor(applicationName, base, authAction, refreshAction, loginFunc, refreshFunc, setXHttpAuth,
-                authTokenSetFunc = null, logoutFunc = null, createSpinner = spinner.createSpinner,
-                destroySpinner = spinner.destroySpinner) {
+                submitActions, setConnectionAction, authTokenSetFunc = null, logoutFunc = null,
+                createSpinner = spinner.createSpinner, destroySpinner = spinner.destroySpinner) {
         this.base = base;
         this.authLocked = true;
         this.authQueue = [];
@@ -23,15 +23,29 @@ export class RequestConfig {
         this.rememberMe = true;
         this.logoutFunc = logoutFunc;
         this.parent = null;
+		this.submitActions = submitActions;
+        this._setConnectionAction = setConnectionAction
+        this.setConnectionAction = function(json) { setConnectionAction(this, json); };
+        this.credentials = null;
+    }
+
+    setCredentials(credentials) { this.credentials = credentials; }
+
+    setRememberMe(isRememberMe) {
+        this.rememberMe = isRememberMe;
+        if (this.parent) {
+            parent.rememberMe = isRememberMe;
+        }
     }
 
     clone() {
         let ret = new RequestConfig(this.applicationName, this.base, this.authAction, this.refreshAction,
-            this.loginFunc,  this.refreshFunc, this.setXHttpAuth, this.authTokenSetFunc, this.logoutFunc,
-            this.createSpinner, this.destroySpinner);
+            this.loginFunc, this.refreshFunc, this.setXHttpAuth, this.submitActions, this._setConnectionAction,
+            this.authTokenSetFunc, this.logoutFunc, this.createSpinner, this.destroySpinner);
         ret.rememberMe = this.rememberMe;
         ret.parent = this;
         ret.authLocked = false;
+        ret.setCredentials(this.credentials);
         return ret;
     }
 
@@ -44,12 +58,30 @@ export class RequestConfig {
         if (this.loginFunc !== null) {
             this.logoutFunc(this.getStorage(), doReload, doCopy, this.getInvertedStorage());
         }
+
+        if (this.parent !== null) {
+            this.parent.logout();
+        }
     }
 
     resetAuthToken() {
         this.authToken = null;
         if (this.authTokenSetFunc !== null) {
             this.authTokenSetFunc(this.getStorage(), this.authToken);
+        }
+
+        if (this.parent !== null) {
+            this.parent.resetAuthToken();
+        }
+    }
+
+    releaseQueues() {
+        this.authLocked = false;
+        while (this.authQueue.length !== 0) {
+            this.authQueue.pop()();
+        }
+        if (this.parent !== null) {
+            this.parent.releaseQueues();
         }
     }
 
@@ -59,10 +91,6 @@ export class RequestConfig {
             this.authTokenSetFunc(this.getStorage(), this.authToken);
         }
 
-        this.authLocked = false;
-        while (this.authQueue.length !== 0) {
-            this.authQueue.pop()();
-        }
         if (this.parent !== null) {
             this.parent.setAuthToken(authToken);
         }
@@ -79,6 +107,14 @@ export function jsonToUrlEncoded(element, key, list){
         list.push(key + '=' + encodeURIComponent(element));
     }
     return list.join('&');
+}
+
+function getScriptParentElement() {
+    if (document.currentScript) {
+        return document.currentScript.parentElement;
+    } else {
+        return null;
+    }
 }
 
 export function urlEncodedToJson(urlEncoded) {
@@ -127,8 +163,13 @@ function getResponseCodeHandler(renderFunc, status) {
 }
 
 export function make(config, action, renderFunc, body, json, ignoreLock = true) {
-    if (config.authLocked && ignoreLock) {
-        this.authQueue.push(function() { make(config, action, renderFunc, body, json); });
+    let curScriptParent = getScriptParentElement();
+    if (config.authLocked && !ignoreLock) {
+        config.authQueue.push(function() {
+            document.currentScriptParent = curScriptParent;
+            make(config, action, renderFunc, body, json);
+        });
+        return;
     }
 
     let resource = action.split(" ")[1];
@@ -202,15 +243,42 @@ export function make(config, action, renderFunc, body, json, ignoreLock = true) 
 }
 
 export function makeJson(config, action, renderFunc, json) {
-    make(config, action, renderFunc, undefined, JSON.stringify(json));
+	if (config.authLocked) {
+        let curScriptParent = getScriptParentElement();
+        config.authQueue.push(function() {
+            document.currentScriptParent = curScriptParent;
+            makeJson(config, action, renderFunc, json);
+        });
+        return
+    }
+	if (action in config.submitActions) {
+        config.setConnectionAction(json);
+    }
+    make(config, action, renderFunc, undefined, JSON.stringify(json), true);
 }
 
 export function makeBody(config, action, renderFunc, body) {
-    make(config, action, renderFunc, jsonToUrlEncoded(body));
+	if (config.authLocked) {
+        let curScriptParent = getScriptParentElement();
+        config.authQueue.push(function() {
+            document.currentScriptParent = curScriptParent;
+            makeBody(config, action, renderFunc, body);
+        });
+        return
+    }
+    make(config, action, renderFunc, jsonToUrlEncoded(body), true);
 }
 
 export function makeEmpty(config, action, renderFunc) {
-    make(config, action, renderFunc)
+	if (config.authLocked) {
+        let curScriptParent = getScriptParentElement();
+        config.authQueue.push(function() {
+            document.currentScriptParent = curScriptParent;
+            makeEmpty(config, action, renderFunc);
+        });
+        return
+    }
+    make(config, action, renderFunc, undefined, undefined, true)
 }
 
 export function makeSimple(config, action, renderFunc, body, json) {

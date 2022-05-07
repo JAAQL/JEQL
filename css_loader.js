@@ -23,11 +23,15 @@ function appendIfNoExist(parent, toAppend) {
 
 function loadStyleSheets() {
     let baseDir = "";
-    if (window.location.protocol === "file:") {
-        baseDir = "../JEQL/";
-    } else {
-        baseDir = "/apps/JEQL/";
-    }
+	if (document.currentScript) {
+		baseDir = document.currentScript.src.split("/").slice(0, -1).join("/") + "/";
+	} else {
+		if (window.location.protocol === "file:") {
+			baseDir = "../../../../JEQL/";
+		} else {
+			baseDir = "/apps/JEQL/";
+		}
+	}
 
     let head = document.getElementsByTagName("head")[0];
 
