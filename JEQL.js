@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.0.0";
+let VERSION = "2.1.0";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -19,6 +19,7 @@ let JEQL_FIESTA_TERMINATOR = "terminator";
 let JEQL_FIESTA_ALTERNATIVE = "alternative";
 
 let ACTION_LOGIN = "POST /oauth/token";
+let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
 let ACTION_FETCH_APPLICATIONS = "GET /applications";
 let ACTION_INTERNAL_NODES = "GET /internal/nodes"; export {ACTION_INTERNAL_NODES};
 let ACTION_INTERNAL_NODES_ADD = "POST /internal/nodes"; export {ACTION_INTERNAL_NODES_ADD};
@@ -1120,10 +1121,6 @@ function renderAccountBanner(config) {
     // TODO render something that allows you to select configurations and access the account app
 }
 
-export function initAsPublic() {
-    // TODO initialise with supplied credentials, do not render account banner
-}
-
 export function fetchMyApplications(config, callback) {
     requests.makeEmpty(config, ACTION_FETCH_APPLICATIONS, callback);
 }
@@ -1164,12 +1161,12 @@ function setConnection(config, json) {
     }
 }
 
-export function initPublic(application, onLoad, credentials, jaaqlUrl = null) {
-    init(application, onLoad, false, jaaqlUrl, credentials);
+export function initPublic(application, onLoad, jaaqlUrl = null) {
+    init(application, onLoad, false, jaaqlUrl, false);
 }
 
 export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl = null,
-                     credentials = null) {
+                     authenticated = true) {
     if (!onLoad) { onLoad = function() {  }; }
     if (jaaqlUrl === null) { jaaqlUrl = getJaaqlUrl(); }
 
@@ -1192,7 +1189,13 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
     let config = new requests.RequestConfig(application, jaaqlUrl, ACTION_LOGIN, ACTION_REFRESH, showLoginModal,
         onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, setAuthTokenFunc,
         logoutFunc);
-    if (credentials) {
+    if (!authenticated) {
+        let credentials = requests.makeSimple(config, ACTION_FETCH_APPLICATION_PUBLIC_USER, null, null,
+            {KEY_APPLICATION: application}, false);
+        if (!credentials) {
+            console.error("No public user for application " + application);
+            return
+        }
         config.setCredentials(credentials);
     }
     window.JEQL_CONFIG = config;

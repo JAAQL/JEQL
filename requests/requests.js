@@ -281,27 +281,33 @@ export function makeEmpty(config, action, renderFunc) {
     make(config, action, renderFunc, undefined, undefined, true)
 }
 
-export function makeSimple(config, action, renderFunc, body, json) {
+export function makeSimple(config, action, renderFunc, body, json, async = true) {
     let resource = action.split(" ")[1];
     let url = config.base + resource;
     let method = action.split(" ")[0];
 
     let xhttp = new XMLHttpRequest();
-    xhttp.onreadystatechange = function() {
-        if (this.readyState === 4) {
-            config.destroySpinner();
-        }
+    if (async) {
+        xhttp.onreadystatechange = function () {
+            if (this.readyState === 4) {
+                config.destroySpinner();
+            }
 
-        if (this.readyState === 4 && this.status === 200) {
-            renderFunc(parseResponse(this));
-        } else if (this.readyState === 4 && this.status === 401) {
-            console.log(ERR_UNEXPECTED_CRED_CHALLENGE);
-        }
-    };
+            if (this.readyState === 4 && this.status === 200) {
+                renderFunc(parseResponse(this));
+            } else if (this.readyState === 4 && this.status === 401) {
+                console.log(ERR_UNEXPECTED_CRED_CHALLENGE);
+            }
+        };
+    }
 
     if (method === 'GET' && body !== undefined) {
         url += "?" + body;
     }
-    xhttp.open(method, url, true);
+    xhttp.open(method, url, async);
     xhttpSendRequest(config, xhttp, method, body, json);
+    if (!async) {
+        config.destroySpinner();
+        return parseResponse(request);
+    }
 }
