@@ -1,15 +1,25 @@
 import * as JEQL from "./JEQL.js"
 
-let appName = document.currentScript.getAttribute("appName");
+let cur = document.currentScript;
 
-if (document.currentScript.hasAttribute("username")) {
-    let credentials = {};
-    credentials[JEQL.KEY_USERNAME] = document.currentScript.getAttribute("username");
-    credentials[JEQL.KEY_PASSWORD] = document.currentScript.getAttribute("password");
+let application = cur.getAttribute("application");
 
-    JEQL.initPublic(appName, null, credentials);
+let authenticated = true
+if (cur.hasAttribute("access")) {
+    let access = cur.getAttribute("access");
+    if (access === "public") {
+        authenticated = false;
+    } else if (access === "authenticated") {
+        // Do nothing
+    } else {
+        console.error("JEQL access must be either 'public' or 'authenticated'");
+    }
+}
+
+if (authenticated) {
+    JEQL.init(application);
 } else {
-    JEQL.init(appName);
+    JEQL.initPublic(application);
 }
 
 export default JEQL
