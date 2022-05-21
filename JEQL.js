@@ -18,6 +18,7 @@ let JEQL_FIESTA_SEPARATOR = "separator";
 let JEQL_FIESTA_TERMINATOR = "terminator";
 let JEQL_FIESTA_ALTERNATIVE = "alternative";
 
+let ACTION_SIGNUP = "POST /account/signup/request"
 let ACTION_LOGIN = "POST /oauth/token";
 let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
 let ACTION_FETCH_APPLICATIONS = "GET /applications";
@@ -46,7 +47,7 @@ let ACTION_INTERNAL_ASSIGNED_DATABASE_ADD = "POST /internal/applications/configu
 let ACTION_INTERNAL_ASSIGNED_DATABASE_DEL = "DELETE /internal/applications/configurations/assigned-databases"; export {ACTION_INTERNAL_ASSIGNED_DATABASE_DEL};
 let ACTION_INTERNAL_ASSIGNED_DATABASE_DELCONF = "POST /internal/applications/configurations/assigned-databases/confirm-deletion"; export {ACTION_INTERNAL_ASSIGNED_DATABASE_DELCONF};
 let ACTION_INTERNAL_CONFIG = "GET /internal/applications/configurations"; export {ACTION_INTERNAL_CONFIG};
-let ACTION_INTERNAL_CONFIG_ADD = "POST /internal/applications/configuration"; export {ACTION_INTERNAL_CONFIG_ADD};
+let ACTION_INTERNAL_CONFIG_ADD = "POST /internal/applications/configurations"; export {ACTION_INTERNAL_CONFIG_ADD};
 let ACTION_INTERNAL_CONFIG_DEL = "DELETE /internal/applications/configurations"; export {ACTION_INTERNAL_CONFIG_DEL};
 let ACTION_INTERNAL_CONFIG_DELCONF = "POST /internal/applications/configurations/confirm-deletion"; export {ACTION_INTERNAL_CONFIG_DELCONF};
 let ACTION_INTERNAL_CONFIG_AUTH = "GET /internal/applications/configurations/authorizations"; export {ACTION_INTERNAL_CONFIG_AUTH};
@@ -91,6 +92,7 @@ let KEY_CONFIGURATION = "configuration"; export {KEY_CONFIGURATION};
 let KEY_APPLICATION = "application"; export {KEY_APPLICATION};
 let KEY_DESCRIPTION = "description"; export {KEY_DESCRIPTION};
 let KEY_URL = "url"; export {KEY_URL};
+let KEY_PUBLIC_USERNAME = "public_username"; export {KEY_PUBLIC_USERNAME};
 let KEY_ROLE = "role"; export {KEY_ROLE};
 let KEY_PRECEDENCE = "precedence"; export {KEY_PRECEDENCE};
 let KEY_CONNECTIONS = "connections";
@@ -724,6 +726,13 @@ function rendererMFALogin(modal, mainLoginDiv, config, callback, preAuthKey) {
     document.getElementById(ID_MFA_0).focus();
 }
 
+export function renderLoginInPage(element, callback) {
+    if (!callback) { callback = function() { }; }
+    element.closeModal = function() { element.innerHTML = ""; }
+    makeBuildable(element);
+    rendererLogin(element, window.JEQL_CONFIG, callback, null);
+}
+
 function rendererLogin(modal, config, callback, errMsg) {
     modal.id = ID_LOGIN_MODAL;
     modal.appendChild(elemBuilder("div").buildClass(CLS_CENTER).buildHTML(`
@@ -806,9 +815,6 @@ function rendererLogin(modal, config, callback, errMsg) {
     bindButton(ID_USERNAME, ID_LOGIN_BUTTON);
     bindButton(ID_PASSWORD, ID_LOGIN_BUTTON);
     document.getElementById(ID_USERNAME).focus();
-    if (config.credentials) {
-        button.click();
-    }
 }
 
 function showLoginModal(config, callback, errMsg) {
@@ -982,8 +988,10 @@ export function getOrSelectAppConfig(config, afterSelectAppConfig = null, allowF
 
     if (afterSelectAppConfig) {
         let curScriptParent = scriptParent();
+        let curScript = script();
         newAfterSelectAppConfig = function (...args) {
             document.currentScriptParent = curScriptParent;
+            document.theCurrentScript = curScript;
             config.releaseQueues();
             afterSelectAppConfig(...args);
         }
@@ -1030,13 +1038,29 @@ export function scriptParent() {
     }
 }
 
+export function script() {
+    if (document.currentScript) {
+        return document.currentScript;
+    } else if (document.hasOwnProperty("theCurrentScript")) {
+        return document.theCurrentScript;
+    } else {
+        return document.currentScript;
+    }
+}
+
+export function scriptPrior() {
+    return script().previousElementSibling;
+}
+
 export function foreach(query, renderer) {
     if (query.constructor !== Object) {
         query = formQuery(window.JEQL_CONFIG, query);
     }
     let currentScriptParent = scriptParent();
+    let curScript = script();
     submit(window.JEQL_CONFIG, query, function(data) {
         document.currentScriptParent = currentScriptParent;
+        document.theCurrentScript = curScript;
         for (let i = 0; i <  data[KEY_ROWS].length; i ++) {
             renderer(tupleToObject(data[KEY_ROWS][i], data[KEY_COLUMNS]));
         }
@@ -1187,11 +1211,13 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
         }
     };
     let config = new requests.RequestConfig(application, jaaqlUrl, ACTION_LOGIN, ACTION_REFRESH, showLoginModal,
-        onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, setAuthTokenFunc,
-        logoutFunc);
+        onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, KEY_USERNAME, resetAppConfig,
+        setAuthTokenFunc, logoutFunc);
     if (!authenticated) {
-        let credentials = requests.makeSimple(config, ACTION_FETCH_APPLICATION_PUBLIC_USER, null, null,
-            {KEY_APPLICATION: application}, false);
+        let body = {};
+        body[KEY_APPLICATION] = application;
+        let credentials = requests.makeSimple(config, ACTION_FETCH_APPLICATION_PUBLIC_USER, null,
+            body, null, false);
         if (!credentials) {
             console.error("No public user for application " + application);
             return
@@ -1215,6 +1241,11 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
     getOrSelectAppConfig(config.clone(), onLoad, true);
 
     return config;
+}
+
+export function signup(data) {
+    data["application"] = window.JEQL_CONFIG.applicationName;
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, function() { alert("Signed up"); }, null, data);
 }
 
 function callbackDoNotRefreshConnections(res, config) {

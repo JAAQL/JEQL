@@ -12,14 +12,14 @@ if (cur.hasAttribute("access")) {
     } else if (access === "authenticated") {
         // Do nothing
     } else {
-        console.error("JEQL access must be either 'public' or 'authenticated'")
+        console.error("JEQL access must be either 'public' or 'authenticated'");
     }
 }
 
 if (authenticated) {
     JEQL.init(application);
 } else {
-    JEQL.initPublic(application, null, credentials);
+    JEQL.initPublic(application);
 }
 
 export default JEQL

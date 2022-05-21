@@ -5,17 +5,20 @@ let HTTP_STATUS_DEFAULT = "DEFAULT"; export {HTTP_STATUS_DEFAULT};
 
 export class RequestConfig {
     constructor(applicationName, base, authAction, refreshAction, loginFunc, refreshFunc, setXHttpAuth,
-                submitActions, setConnectionAction, authTokenSetFunc = null, logoutFunc = null,
-                createSpinner = spinner.createSpinner, destroySpinner = spinner.destroySpinner) {
+                submitActions, setConnectionAction, usernameField, reloadAppConfigFunc, authTokenSetFunc = null,
+                logoutFunc = null, createSpinner = spinner.createSpinner, destroySpinner = spinner.destroySpinner) {
         this.base = base;
         this.authLocked = true;
         this.authQueue = [];
         this.applicationName = applicationName;
+        this.username = null;
         this.authAction = authAction;
         this.refreshAction = refreshAction;
         this.loginFunc = loginFunc;
         this.refreshFunc = refreshFunc;
         this.authToken = null;
+        this.usernameField = usernameField;
+        this.reloadAppConfigFunc = reloadAppConfigFunc;
         this.createSpinner = createSpinner;
         this.destroySpinner = destroySpinner;
         this.authTokenSetFunc = authTokenSetFunc;
@@ -41,7 +44,7 @@ export class RequestConfig {
     clone() {
         let ret = new RequestConfig(this.applicationName, this.base, this.authAction, this.refreshAction,
             this.loginFunc, this.refreshFunc, this.setXHttpAuth, this.submitActions, this._setConnectionAction,
-            this.authTokenSetFunc, this.logoutFunc, this.createSpinner, this.destroySpinner);
+            this.usernameField, this.reloadAppConfigFunc, this.authTokenSetFunc, this.logoutFunc, this.createSpinner, this.destroySpinner);
         ret.rememberMe = this.rememberMe;
         ret.parent = this;
         ret.authLocked = false;
@@ -55,6 +58,10 @@ export class RequestConfig {
     getInvertedStorage() { return this.rememberMe ? window.sessionStorage : window.localStorage; }
 
     logout(doReload = true, doCopy = false) {
+        this.credentials = null;
+        this.username = null;
+        this.resetAuthToken();
+
         if (this.loginFunc !== null) {
             this.logoutFunc(this.getStorage(), doReload, doCopy, this.getInvertedStorage());
         }
@@ -85,15 +92,25 @@ export class RequestConfig {
         }
     }
 
-    setAuthToken(authToken) {
+    setAuthToken(authToken, username) {
+        let didReset = false;
+
+        if (this.username && this.username !== username && username) {
+            this.logout(false);
+            this.username = username;
+            didReset = true;
+        }
+
         this.authToken = authToken;
         if (this.authTokenSetFunc !== null) {
             this.authTokenSetFunc(this.getStorage(), this.authToken);
         }
 
         if (this.parent !== null) {
-            this.parent.setAuthToken(authToken);
+            this.parent.setAuthToken(authToken, username);
         }
+
+        return didReset;
     }
 }
 
@@ -117,6 +134,14 @@ function getScriptParentElement() {
     }
 }
 
+function getScript() {
+    if (document.currentScript) {
+        return document.currentScript;
+    } else {
+        return null;
+    }
+}
+
 export function urlEncodedToJson(urlEncoded) {
     let encodeList = Array.from(urlEncoded.split("&"));
     let json = {};
@@ -134,15 +159,26 @@ function parseResponse(toParse) {
     }
 }
 
+function getURL(method, body, json) {
+    if (method === "GET") {
+        if (body) {
+            return "?" + body;
+        } else if (json) {
+            throw new Error("Please make GET requests passing to the body argument, not json");
+        }
+    }
+    return "";
+}
+
 function xhttpSendRequest(config, xhttp, method, body, json) {
     config.createSpinner();
-    if (body !== undefined && json === undefined && method !== 'GET') {
+    if (body && !json && method !== 'GET') {
         xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
         xhttp.send(body);
-    } else if (json !== undefined && body === undefined && method !== 'GET') {
+    } else if (json && !body && method !== 'GET') {
         xhttp.setRequestHeader("Content-Type", "application/json; charset=utf-8");
         xhttp.send(json);
-    } else if (json !== undefined && body !== undefined && method !== 'GET') {
+    } else if (json && body && method !== 'GET') {
         alert("Tell the developer off! They've provided both json and body data. Naughty");
     } else {
         xhttp.send();
@@ -162,11 +198,13 @@ function getResponseCodeHandler(renderFunc, status) {
     }
 }
 
-export function make(config, action, renderFunc, body, json, ignoreLock = true) {
+export function make(config, action, renderFunc, body, json, ignoreLock = true, loginUsername = null) {
     let curScriptParent = getScriptParentElement();
+    let curScript = getScript();
     if (config.authLocked && !ignoreLock) {
         config.authQueue.push(function() {
             document.currentScriptParent = curScriptParent;
+            document.theCurrentScript = curScript;
             make(config, action, renderFunc, body, json);
         });
         return;
@@ -196,8 +234,13 @@ export function make(config, action, renderFunc, body, json, ignoreLock = true) 
         }
 
         if (this.readyState === 4 && this.status === 200) {
-            if (isOauth || isRefresh) {
-                config.setAuthToken(res);
+            if (isOauth) {
+                let didReset = config.setAuthToken(res, loginUsername);
+                if (didReset) {
+                    renderFunc = function() { config.reloadAppConfigFunc(config, renderFunc); }
+                }
+                renderFunc();
+            } else if (isRefresh) {
                 renderFunc();
             } else {
                 renderFunc(res);
@@ -231,10 +274,10 @@ export function make(config, action, renderFunc, body, json, ignoreLock = true) 
             }
         }
     };
-    if (method === 'GET' && body !== undefined) {
-        url += "?" + body;
-    }
+
+    url += getURL(method, body, json);
     xhttp.open(method, url, true);
+
     if (!isOauth) {
         config.setXHttpAuth(config, xhttp);
     }
@@ -245,35 +288,50 @@ export function make(config, action, renderFunc, body, json, ignoreLock = true) 
 export function makeJson(config, action, renderFunc, json) {
 	if (config.authLocked) {
         let curScriptParent = getScriptParentElement();
+        let curScript = getScript();
         config.authQueue.push(function() {
             document.currentScriptParent = curScriptParent;
+            document.theCurrentScript = curScript;
             makeJson(config, action, renderFunc, json);
         });
         return
     }
-	if (action in config.submitActions) {
+	if (config.submitActions.includes(action)) {
         config.setConnectionAction(json);
     }
-    make(config, action, renderFunc, undefined, JSON.stringify(json), true);
+
+    let isOauth = action === config.authAction;
+    let isRefresh = action === config.refreshAction;
+    let username = null;
+
+    if (isOauth) {
+        username = json[config.usernameField];
+    }
+
+    make(config, action, renderFunc, undefined, JSON.stringify(json), true, username);
 }
 
 export function makeBody(config, action, renderFunc, body) {
 	if (config.authLocked) {
         let curScriptParent = getScriptParentElement();
+        let curScript = getScript();
         config.authQueue.push(function() {
             document.currentScriptParent = curScriptParent;
+            document.theCurrentScript = curScript;
             makeBody(config, action, renderFunc, body);
         });
         return
     }
-    make(config, action, renderFunc, jsonToUrlEncoded(body), true);
+    make(config, action, renderFunc, jsonToUrlEncoded(body), undefined, true);
 }
 
 export function makeEmpty(config, action, renderFunc) {
 	if (config.authLocked) {
         let curScriptParent = getScriptParentElement();
+        let curScript = getScript();
         config.authQueue.push(function() {
             document.currentScriptParent = curScriptParent;
+            document.theCurrentScript = curScript;
             makeEmpty(config, action, renderFunc);
         });
         return
@@ -285,6 +343,17 @@ export function makeSimple(config, action, renderFunc, body, json, async = true)
     let resource = action.split(" ")[1];
     let url = config.base + resource;
     let method = action.split(" ")[0];
+
+    if (body) {
+        body = jsonToUrlEncoded(body);
+    }
+    if (json) {
+        json = JSON.stringify(json);
+    }
+
+    if (!renderFunc) {
+        renderFunc = function() {  };
+    }
 
     let xhttp = new XMLHttpRequest();
     if (async) {
@@ -301,13 +370,12 @@ export function makeSimple(config, action, renderFunc, body, json, async = true)
         };
     }
 
-    if (method === 'GET' && body !== undefined) {
-        url += "?" + body;
-    }
+    url += getURL(method, body, json);
     xhttp.open(method, url, async);
+
     xhttpSendRequest(config, xhttp, method, body, json);
     if (!async) {
         config.destroySpinner();
-        return parseResponse(request);
+        return parseResponse(xhttp);
     }
 }
