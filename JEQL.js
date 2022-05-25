@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.1.0";
+let VERSION = "2.1.1";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -1192,7 +1192,12 @@ export function initPublic(application, onLoad, jaaqlUrl = null) {
 export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl = null,
                      authenticated = true) {
     if (!onLoad) { onLoad = function() {  }; }
-    if (jaaqlUrl === null) { jaaqlUrl = getJaaqlUrl(); }
+
+    if (jaaqlUrl === null) {
+        jaaqlUrl = getJaaqlUrl();
+    } else if (!jaaqlUrl.endsWith("/api")) {
+        jaaqlUrl += "/api";
+    }
 
     let setAuthTokenFunc = function(storage, authToken) {
         let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
