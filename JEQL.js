@@ -1048,11 +1048,23 @@ export function script() {
     }
 }
 
+export function prepareQuery(query) {
+    if (query.hasOwnProperty("parameter")) {
+        query["parameters"] = query["parameter"];
+        delete query.parameter;
+    }
+    if (query.hasOwnProperty("select")) {
+        query["query"] = "SELECT " + query["select"];
+        delete query.select;
+    }
+    return query;
+}
+
 export function scriptPrior() {
     return script().previousElementSibling;
 }
 
-export function foreach(query, renderer) {
+export function foreach(query, renderer, asObjects = true) {
     if (query.constructor !== Object) {
         query = formQuery(window.JEQL_CONFIG, query);
     }
@@ -1062,7 +1074,11 @@ export function foreach(query, renderer) {
         document.currentScriptParent = currentScriptParent;
         document.theCurrentScript = curScript;
         for (let i = 0; i <  data[KEY_ROWS].length; i ++) {
-            renderer(tupleToObject(data[KEY_ROWS][i], data[KEY_COLUMNS]));
+            if (asObjects) {
+                renderer(tupleToObject(data[KEY_ROWS][i], data[KEY_COLUMNS]));
+            } else {
+                renderer(data[KEY_ROWS[i]], data[KEY_COLUMNS]);
+            }
         }
     });
 }
@@ -1248,9 +1264,12 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
     return config;
 }
 
-export function signup(data) {
+export function signup(data, onsignup) {
+    if (!onsignup) {
+        onsignup = function() {  };
+    }
     data["application"] = window.JEQL_CONFIG.applicationName;
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, function() { alert("Signed up"); }, null, data);
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, onsignup, null, data);
 }
 
 function callbackDoNotRefreshConnections(res, config) {
