@@ -18,10 +18,24 @@ let JEQL_FIESTA_SEPARATOR = "separator";
 let JEQL_FIESTA_TERMINATOR = "terminator";
 let JEQL_FIESTA_ALTERNATIVE = "alternative";
 
+let SIGNUP_NOT_STARTED = 0; export {SIGNUP_NOT_STARTED};
+let SIGNUP_STARTED = 1; export {SIGNUP_STARTED};
+let SIGNUP_ALREADY_REGISTERED = 2; export {SIGNUP_ALREADY_REGISTERED};
+let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED}
+
 let ACTION_SIGNUP = "POST /account/signup/request"
+let ACTION_SIGNUP_WITH_TOKEN = "POST /account/signup/activate"
+let ACTION_SIGNUP_POLL = "POST /account/signup/poll"
 let ACTION_LOGIN = "POST /oauth/token";
 let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
 let ACTION_FETCH_APPLICATIONS = "GET /applications";
+let ACTION_INTERNAL_EMAIL_ACCOUNTS = "GET /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS};
+let ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD = "POST /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD};
+let ACTION_INTERNAL_EMAIL_ACCOUNTS_DEL = "DELETE /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_DEL};
+let ACTION_INTERNAL_EMAIL_ACCOUNTS_DELCONF = "POST /internal/emails/accounts/confirm-deletion"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_DELCONF};
+let ACTION_INTERNAL_EMAIL_TEMPLATES = "GET /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES};
+let ACTION_INTERNAL_EMAIL_TEMPLATES_DEL = "DELETE /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_DEL};
+let ACTION_INTERNAL_EMAIL_TEMPLATES_DELCONF = "POST /internal/emails/templates/confirm-deletion"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_DELCONF};
 let ACTION_INTERNAL_NODES = "GET /internal/nodes"; export {ACTION_INTERNAL_NODES};
 let ACTION_INTERNAL_NODES_ADD = "POST /internal/nodes"; export {ACTION_INTERNAL_NODES_ADD};
 let ACTION_INTERNAL_NODES_DEL = "DELETE /internal/nodes"; export {ACTION_INTERNAL_NODES_DEL};
@@ -76,6 +90,7 @@ let KEY_QUERY = "query";
 let KEY_PARAMETERS = "parameters";
 let KEY_DATASET = "dataset"; export {KEY_DATASET};
 let KEY_NODE = "node"; export {KEY_NODE};
+let KEY_PROTOCOL = "protocol"; export {KEY_PROTOCOL};
 let KEY_DATABASE = "database"; export {KEY_DATABASE};
 let KEY_FORCE_TRANSACTIONAL = "force_transactional"; export {KEY_FORCE_TRANSACTIONAL};
 let KEY_ROWS = "rows"; export {KEY_ROWS};
@@ -85,6 +100,9 @@ let KEY_ADDRESS = "address"; export {KEY_ADDRESS};
 let KEY_DELETED = "deleted"; export {KEY_DELETED};
 let KEY_CONNECTION = "connection";
 let KEY_USERNAME = "username"; export {KEY_USERNAME};
+let KEY_ACCOUNT = "account"; export {KEY_ACCOUNT};
+let KEY_ALLOW_CONFIRM_SIGNUP_ATTEMPT = "allow_confirm_signup_attempt"; export {KEY_ALLOW_CONFIRM_SIGNUP_ATTEMPT};
+let KEY_ALLOW_SIGNUP = "allow_signup"; export {KEY_ALLOW_SIGNUP};
 let KEY_PASSWORD = "password"; export {KEY_PASSWORD};
 let KEY_MFA_KEY = "mfa_key";
 let KEY_PRE_AUTH_KEY = "pre_auth_key";
@@ -97,6 +115,8 @@ let KEY_ROLE = "role"; export {KEY_ROLE};
 let KEY_PRECEDENCE = "precedence"; export {KEY_PRECEDENCE};
 let KEY_CONNECTIONS = "connections";
 let KEY_NAME = "name"; export {KEY_NAME};
+let KEY_SEND_NAME = "send_name"; export {KEY_SEND_NAME};
+let KEY_HOST = "host"; export {KEY_HOST};
 let KEY_DATA = "data"; export {KEY_DATA};
 let KEY_CREATE = "create"; export {KEY_CREATE};
 let KEY_DROP = "drop"; export {KEY_DROP};
@@ -108,6 +128,14 @@ let KEY_SORT = "sort";
 let KEY_SIZE = "size";
 let KEY_PAGE = "page";
 let KEY_DELETION_KEY = "deletion_key";
+let KEY_INVITE_OR_POLL_KEY = "invite_or_poll_key"
+let KEY_INVITE_KEY = "invite_key"
+let KEY_INVITE_KEY_STATUS = "invite_key_status"
+let KEY_SUBJECT = "subject"; export {KEY_SUBJECT};
+let KEY_APP_RELATIVE_PATH = "app_relative_path"; export {KEY_APP_RELATIVE_PATH};
+let KEY_DATA_VALIDATION_TABLE = "data_validation_table"; export {KEY_DATA_VALIDATION_TABLE};
+let KEY_DATA_VALIDATION_VIEW = "data_validation_table"; export {KEY_DATA_VALIDATION_VIEW};
+let KEY_RECIPIENT_VALIDATION_VIEW = "data_validation_table"; export {KEY_RECIPIENT_VALIDATION_VIEW};
 
 let PROTOCOL_FILE = "file:";
 let LOCAL_DEBUGGING_URL = "http://127.0.0.1:6060";
@@ -278,7 +306,11 @@ export function pagedTableUpdate(table, data) {
 
     document.getElementById(totalId).innerText = data[KEY_RECORDS_TOTAL];
     document.getElementById(filteredId).innerText = data[KEY_RECORDS_FILTERED];
-    document.getElementById(fromId).innerText = (curPage * pageSize - pageSize + 1).toString();
+    if (data[KEY_RECORDS_FILTERED] === 0) {
+        document.getElementById(fromId).innerText = "0";
+    } else {
+        document.getElementById(fromId).innerText = (curPage * pageSize - pageSize + 1).toString();
+    }
     document.getElementById(toId).innerText = Math.min((curPage * pageSize), data[KEY_RECORDS_FILTERED]).toString();
 }
 
@@ -440,7 +472,11 @@ export function objectsToTuples(response) {
     return ret;
 }
 
-export function tableRenderer(data, table, rowRenderer) {
+export function tableRenderer(data, table, rowRenderer, skipColumns) {
+    if (!skipColumns) {
+        skipColumns = [];
+    }
+
     let oldSortCol = null;
     let oldSortDir = null;
 
@@ -462,6 +498,9 @@ export function tableRenderer(data, table, rowRenderer) {
     let isPagingTable = table.getAttribute(ATTR_JEQL_PAGING_TABLE);
     let header = table.buildChild("tr");
     for (let idx in Object.keys(data[KEY_COLUMNS])) {
+        if (skipColumns.includes(data[KEY_COLUMNS][idx])) {
+            continue;
+        }
         let headerText = formatAsTableHeader(data[KEY_COLUMNS][idx]);
         let th = header.buildChild("th").buildClass(CLS_JEQL_TABLE_HEADER).buildText(headerText);
         if (isPagingTable) {
@@ -501,7 +540,12 @@ export function tableRenderer(data, table, rowRenderer) {
     for (let idx in data[KEY_ROWS]) {
         let row = table.buildChild("tr");
         let defaultRowRenderer = function () {
+            let iter = -1;
             for (let key in data[KEY_ROWS][idx]) {
+                iter += 1;
+                if (skipColumns.includes(data[KEY_COLUMNS][iter])) {
+                    continue;
+                }
                 row.buildChild("td").buildText(data[KEY_ROWS][idx][key]);
             }
         };
@@ -1270,6 +1314,34 @@ export function signup(data, onsignup) {
     }
     data["application"] = window.JEQL_CONFIG.applicationName;
     requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, onsignup, null, data);
+}
+
+export function signupWithToken(token, password, handleFunc) {
+    let data = {};
+    data[KEY_INVITE_KEY] = token;
+    data[KEY_PASSWORD] = password;
+
+    request.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN);
+}
+
+export function signupPoll(token, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
+    let data = {};
+    data[KEY_INVITE_OR_POLL_KEY] = token;
+    let renderFuncs = {};
+    renderFuncs[200] = function(res) {
+        let status = res[KEY_INVITE_KEY_STATUS];
+        if (status === SIGNUP_STARTED) {
+            onStarted();
+        } else if (status === SIGNUP_ALREADY_REGISTERED) {
+            onAlreadyRegistered();
+        } else if (status === SIGNUP_COMPLETED) {
+            onCompleted();
+        } else {
+            setTimeout(function() { signupPoll(token, onStarted, onAlreadyRegistered, onCompleted, onInvalid) }, 1000);
+        }
+    };
+    renderFuncs[422] = onInvalid;
+    request.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_POLL, renderFuncs, null, data);
 }
 
 function callbackDoNotRefreshConnections(res, config) {
