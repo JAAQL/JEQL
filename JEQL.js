@@ -25,6 +25,7 @@ let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED}
 
 let ACTION_SIGNUP = "POST /account/signup/request"
 let ACTION_SIGNUP_WITH_TOKEN = "POST /account/signup/activate"
+let ACTION_FINISH_SIGNUP = "POST /account/signup/finish"
 let ACTION_SIGNUP_POLL = "POST /account/signup/poll"
 let ACTION_LOGIN = "POST /oauth/token";
 let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
@@ -34,6 +35,7 @@ let ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD = "POST /internal/emails/accounts"; expor
 let ACTION_INTERNAL_EMAIL_ACCOUNTS_DEL = "DELETE /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_DEL};
 let ACTION_INTERNAL_EMAIL_ACCOUNTS_DELCONF = "POST /internal/emails/accounts/confirm-deletion"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_DELCONF};
 let ACTION_INTERNAL_EMAIL_TEMPLATES = "GET /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES};
+let ACTION_INTERNAL_EMAIL_TEMPLATES_ADD = "POST /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_ADD};
 let ACTION_INTERNAL_EMAIL_TEMPLATES_DEL = "DELETE /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_DEL};
 let ACTION_INTERNAL_EMAIL_TEMPLATES_DELCONF = "POST /internal/emails/templates/confirm-deletion"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_DELCONF};
 let ACTION_INTERNAL_NODES = "GET /internal/nodes"; export {ACTION_INTERNAL_NODES};
@@ -87,6 +89,7 @@ let ERR_COULD_NOT_FIND_APPLICATION_WITH_NAME = "Could not find application with 
 let ERR_MFA_TIMEOUT_OCCURRED = "MFA timeout hit. Please login again";
 
 let KEY_QUERY = "query";
+let KEY_EMAIL = "email";
 let KEY_PARAMETERS = "parameters";
 let KEY_DATASET = "dataset"; export {KEY_DATASET};
 let KEY_NODE = "node"; export {KEY_NODE};
@@ -143,6 +146,7 @@ let LOCAL_DEBUGGING_URL = "http://127.0.0.1:6060";
 let CLS_MODAL_OUTER = "jeql-modal-outer";
 let CLS_MODAL = "jeql-modal"; export {CLS_MODAL};
 let CLS_MODAL_WIDE = "jeql-modal-wide"; export {CLS_MODAL_WIDE};
+let CLS_MODAL_WIDEST = "jeql-modal-widest"; export {CLS_MODAL_WIDEST};
 let CLS_MODAL_AUTO = "jeql-modal-auto"; export {CLS_MODAL_AUTO};
 let CLS_BUTTON = "jeql-button"; export {CLS_BUTTON};
 let CLS_BUTTON_YES = "jeql-button-yes"; export {CLS_BUTTON_YES};
@@ -576,6 +580,10 @@ export function makeBuildable(elem) {
     elem.buildBoolean = function(attr, doBuild) { return buildBoolean(elem, attr, doBuild); };
     elem.buildText = function(text) { return buildText(elem, text); };
     elem.buildHTML = function(html) { return buildHTML(elem, html); };
+    elem.resetHTML = function(html) {
+        elem.innerHTML = "";
+        return buildHTML(elem, html);
+    };
     elem.buildChild = function(tag) { return buildChild(elem, tag); };
     elem.buildRow = function() { return buildChild(elem, "tr"); };
     elem.buildForeach = function(iterable, lambda) {
@@ -596,6 +604,8 @@ export function elemBuilder(tag) {
     makeBuildable(ret);
     return ret;
 }
+
+export function getBuildableById(id) { return makeBuildable(document.getElementById(id)); }
 
 function xHttpSetAuth(config, xhttp) {
     xhttp.setRequestHeader("Authentication-Token", config.authToken);
@@ -1308,12 +1318,28 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
     return config;
 }
 
+export function finishSignup(token, onFinished) {
+    let data = {};
+    data[KEY_INVITE_KEY] = token;
+    let preOnFinished = function(data) {
+        if (data.hasOwnProperty(KEY_PARAMETERS)) {
+            onFinished(data[KEY_PARAMETERS]);
+        } else {
+            onFinished();
+        }
+    }
+    requests.makeJson(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, preOnFinished, data)
+}
+
 export function signup(data, onsignup) {
     if (!onsignup) {
         onsignup = function() {  };
     }
-    data["application"] = window.JEQL_CONFIG.applicationName;
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, onsignup, null, data);
+    if (typeof(onsignup) !== "function") {
+        onsignup = function(token) { window.location.replace(handleFunc + "?token=" + token); }
+    }
+    data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, function(ret) { onsignup(ret[KEY_INVITE_KEY]); }, null, data);
 }
 
 export function signupWithToken(token, password, handleFunc) {
@@ -1321,7 +1347,21 @@ export function signupWithToken(token, password, handleFunc) {
     data[KEY_INVITE_KEY] = token;
     data[KEY_PASSWORD] = password;
 
-    request.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN);
+    request.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, handleFunc, null, data);
+}
+
+export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe) {
+    if (typeof(handleFunc) !== "function") {
+        handleFunc = function() { window.location.replace(handleFunc + "?token=" + token); }
+    }
+    let preHandleFunc = function(res) {
+        if (rememberMe !== null && rememberMe !== undefined) {
+            window.JEQL_CONFIG.setRememberMe(rememberMe);
+        }
+        window.JEQL_CONFIG.setCredentials({KEY_USERNAME: res[KEY_EMAIL], KEY_PASSWORD: password});
+        getOrSelectAppConfig(window.JEQL_CONFIG, handleFunc, true);
+    }
+    signupWithToken(token, password, handleFunc);
 }
 
 export function signupPoll(token, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {

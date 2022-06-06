@@ -15,7 +15,7 @@
     transition: transform 0.25s ease-out;
 }
 
-.jeql-modal, .jeql-modal-wide, .jeql-modal-auto {
+.jeql-modal, .jeql-modal-wide, .jeql-modal-widest, .jeql-modal-auto {
     cursor: auto;
     font-family: 'Roboto', sans-serif;
 
@@ -38,6 +38,9 @@
     .jeql-modal-wide {
         width: 85%;
     }
+    .jeql-modal-widest {
+        width: 95%;
+    }
 }
 
 @media only screen and (min-aspect-ratio : 1/1) and (max-aspect-ratio : 3/2) {
@@ -47,6 +50,9 @@
     .jeql-modal-wide {
         width: 65%;
     }
+    .jeql-modal-widest {
+        width: 85%;
+    }
 }
 
 @media only screen and (min-aspect-ratio : 3/2) {
@@ -55,6 +61,9 @@
     }
     .jeql-modal-wide {
         width: 50%;
+    }
+    .jeql-modal-widest {
+        width: 65%;
     }
 }
 
