@@ -933,7 +933,7 @@ function decodeJWT(jwt) {
 
 function getJsonArrayFromStorage(storage, storageKey) {
     let storageObj = storage.getItem(storageKey);
-    if (storageObj === null) {
+    if (!storageObj) {
         storageObj = {};
         storage.setItem(storageKey, JSON.stringify(storageObj));
     } else {
@@ -1239,7 +1239,7 @@ function setConnection(config, json) {
     let dataset = json[KEY_CONNECTION]
     let appConfig = getOrSelectAppConfig(config)[KEY_CONNECTIONS];
 
-    if (dataset === null) {
+    if (!dataset) {
         if (Object.keys(appConfig).length > 1) {
             throw new Error("Must supply dataset as multiple datasets exist");
         } else if (appConfig.length === 0) {
