@@ -362,10 +362,17 @@ export function makeSimple(config, action, renderFunc, body, json, async = true)
                 config.destroySpinner();
             }
 
+            let origRenderFunc = renderFunc;
+            if (typeof(renderFunc) === 'object') {
+                renderFunc = renderFunc[200];
+            }
+
             if (this.readyState === 4 && this.status === 200) {
                 renderFunc(parseResponse(this));
             } else if (this.readyState === 4 && this.status === 401) {
                 console.log(ERR_UNEXPECTED_CRED_CHALLENGE);
+            } else if (this.readyState === 4) {
+                origRenderFunc[this.status](parseResponse(this));
             }
         };
     }

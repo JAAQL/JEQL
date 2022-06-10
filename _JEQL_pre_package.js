@@ -16,10 +16,15 @@ if (cur.hasAttribute("access")) {
     }
 }
 
+let jaaql = null;
+if (cur.hasAttribute("jaaql")) {
+    jaaql = cur.getAttribute("jaaql");
+}
+
 if (authenticated) {
-    JEQL.init(application);
+    JEQL.init(application, null, true, jaaql);
 } else {
-    JEQL.initPublic(application);
+    JEQL.initPublic(application, null, jaaql);
 }
 
 export default JEQL

@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.1.0";
+let VERSION = "2.1.1";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -18,10 +18,26 @@ let JEQL_FIESTA_SEPARATOR = "separator";
 let JEQL_FIESTA_TERMINATOR = "terminator";
 let JEQL_FIESTA_ALTERNATIVE = "alternative";
 
+let SIGNUP_NOT_STARTED = 0; export {SIGNUP_NOT_STARTED};
+let SIGNUP_STARTED = 1; export {SIGNUP_STARTED};
+let SIGNUP_ALREADY_REGISTERED = 2; export {SIGNUP_ALREADY_REGISTERED};
+let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED}
+
 let ACTION_SIGNUP = "POST /account/signup/request"
+let ACTION_SIGNUP_WITH_TOKEN = "POST /account/signup/activate"
+let ACTION_FINISH_SIGNUP = "POST /account/signup/finish"
+let ACTION_SIGNUP_POLL = "POST /account/signup/poll"
 let ACTION_LOGIN = "POST /oauth/token";
 let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
 let ACTION_FETCH_APPLICATIONS = "GET /applications";
+let ACTION_INTERNAL_EMAIL_ACCOUNTS = "GET /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS};
+let ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD = "POST /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD};
+let ACTION_INTERNAL_EMAIL_ACCOUNTS_DEL = "DELETE /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_DEL};
+let ACTION_INTERNAL_EMAIL_ACCOUNTS_DELCONF = "POST /internal/emails/accounts/confirm-deletion"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_DELCONF};
+let ACTION_INTERNAL_EMAIL_TEMPLATES = "GET /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES};
+let ACTION_INTERNAL_EMAIL_TEMPLATES_ADD = "POST /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_ADD};
+let ACTION_INTERNAL_EMAIL_TEMPLATES_DEL = "DELETE /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_DEL};
+let ACTION_INTERNAL_EMAIL_TEMPLATES_DELCONF = "POST /internal/emails/templates/confirm-deletion"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_DELCONF};
 let ACTION_INTERNAL_NODES = "GET /internal/nodes"; export {ACTION_INTERNAL_NODES};
 let ACTION_INTERNAL_NODES_ADD = "POST /internal/nodes"; export {ACTION_INTERNAL_NODES_ADD};
 let ACTION_INTERNAL_NODES_DEL = "DELETE /internal/nodes"; export {ACTION_INTERNAL_NODES_DEL};
@@ -73,9 +89,11 @@ let ERR_COULD_NOT_FIND_APPLICATION_WITH_NAME = "Could not find application with 
 let ERR_MFA_TIMEOUT_OCCURRED = "MFA timeout hit. Please login again";
 
 let KEY_QUERY = "query";
+let KEY_EMAIL = "email";
 let KEY_PARAMETERS = "parameters";
 let KEY_DATASET = "dataset"; export {KEY_DATASET};
 let KEY_NODE = "node"; export {KEY_NODE};
+let KEY_PROTOCOL = "protocol"; export {KEY_PROTOCOL};
 let KEY_DATABASE = "database"; export {KEY_DATABASE};
 let KEY_FORCE_TRANSACTIONAL = "force_transactional"; export {KEY_FORCE_TRANSACTIONAL};
 let KEY_ROWS = "rows"; export {KEY_ROWS};
@@ -85,6 +103,9 @@ let KEY_ADDRESS = "address"; export {KEY_ADDRESS};
 let KEY_DELETED = "deleted"; export {KEY_DELETED};
 let KEY_CONNECTION = "connection";
 let KEY_USERNAME = "username"; export {KEY_USERNAME};
+let KEY_ACCOUNT = "account"; export {KEY_ACCOUNT};
+let KEY_ALLOW_CONFIRM_SIGNUP_ATTEMPT = "allow_confirm_signup_attempt"; export {KEY_ALLOW_CONFIRM_SIGNUP_ATTEMPT};
+let KEY_ALLOW_SIGNUP = "allow_signup"; export {KEY_ALLOW_SIGNUP};
 let KEY_PASSWORD = "password"; export {KEY_PASSWORD};
 let KEY_MFA_KEY = "mfa_key";
 let KEY_PRE_AUTH_KEY = "pre_auth_key";
@@ -97,6 +118,8 @@ let KEY_ROLE = "role"; export {KEY_ROLE};
 let KEY_PRECEDENCE = "precedence"; export {KEY_PRECEDENCE};
 let KEY_CONNECTIONS = "connections";
 let KEY_NAME = "name"; export {KEY_NAME};
+let KEY_SEND_NAME = "send_name"; export {KEY_SEND_NAME};
+let KEY_HOST = "host"; export {KEY_HOST};
 let KEY_DATA = "data"; export {KEY_DATA};
 let KEY_CREATE = "create"; export {KEY_CREATE};
 let KEY_DROP = "drop"; export {KEY_DROP};
@@ -108,6 +131,14 @@ let KEY_SORT = "sort";
 let KEY_SIZE = "size";
 let KEY_PAGE = "page";
 let KEY_DELETION_KEY = "deletion_key";
+let KEY_INVITE_OR_POLL_KEY = "invite_or_poll_key"
+let KEY_INVITE_KEY = "invite_key"
+let KEY_INVITE_KEY_STATUS = "invite_key_status"
+let KEY_SUBJECT = "subject"; export {KEY_SUBJECT};
+let KEY_APP_RELATIVE_PATH = "app_relative_path"; export {KEY_APP_RELATIVE_PATH};
+let KEY_DATA_VALIDATION_TABLE = "data_validation_table"; export {KEY_DATA_VALIDATION_TABLE};
+let KEY_DATA_VALIDATION_VIEW = "data_validation_table"; export {KEY_DATA_VALIDATION_VIEW};
+let KEY_RECIPIENT_VALIDATION_VIEW = "data_validation_table"; export {KEY_RECIPIENT_VALIDATION_VIEW};
 
 let PROTOCOL_FILE = "file:";
 let LOCAL_DEBUGGING_URL = "http://127.0.0.1:6060";
@@ -115,6 +146,7 @@ let LOCAL_DEBUGGING_URL = "http://127.0.0.1:6060";
 let CLS_MODAL_OUTER = "jeql-modal-outer";
 let CLS_MODAL = "jeql-modal"; export {CLS_MODAL};
 let CLS_MODAL_WIDE = "jeql-modal-wide"; export {CLS_MODAL_WIDE};
+let CLS_MODAL_WIDEST = "jeql-modal-widest"; export {CLS_MODAL_WIDEST};
 let CLS_MODAL_AUTO = "jeql-modal-auto"; export {CLS_MODAL_AUTO};
 let CLS_BUTTON = "jeql-button"; export {CLS_BUTTON};
 let CLS_BUTTON_YES = "jeql-button-yes"; export {CLS_BUTTON_YES};
@@ -278,7 +310,11 @@ export function pagedTableUpdate(table, data) {
 
     document.getElementById(totalId).innerText = data[KEY_RECORDS_TOTAL];
     document.getElementById(filteredId).innerText = data[KEY_RECORDS_FILTERED];
-    document.getElementById(fromId).innerText = (curPage * pageSize - pageSize + 1).toString();
+    if (data[KEY_RECORDS_FILTERED] === 0) {
+        document.getElementById(fromId).innerText = "0";
+    } else {
+        document.getElementById(fromId).innerText = (curPage * pageSize - pageSize + 1).toString();
+    }
     document.getElementById(toId).innerText = Math.min((curPage * pageSize), data[KEY_RECORDS_FILTERED]).toString();
 }
 
@@ -440,7 +476,11 @@ export function objectsToTuples(response) {
     return ret;
 }
 
-export function tableRenderer(data, table, rowRenderer) {
+export function tableRenderer(data, table, rowRenderer, skipColumns) {
+    if (!skipColumns) {
+        skipColumns = [];
+    }
+
     let oldSortCol = null;
     let oldSortDir = null;
 
@@ -462,6 +502,9 @@ export function tableRenderer(data, table, rowRenderer) {
     let isPagingTable = table.getAttribute(ATTR_JEQL_PAGING_TABLE);
     let header = table.buildChild("tr");
     for (let idx in Object.keys(data[KEY_COLUMNS])) {
+        if (skipColumns.includes(data[KEY_COLUMNS][idx])) {
+            continue;
+        }
         let headerText = formatAsTableHeader(data[KEY_COLUMNS][idx]);
         let th = header.buildChild("th").buildClass(CLS_JEQL_TABLE_HEADER).buildText(headerText);
         if (isPagingTable) {
@@ -501,7 +544,12 @@ export function tableRenderer(data, table, rowRenderer) {
     for (let idx in data[KEY_ROWS]) {
         let row = table.buildChild("tr");
         let defaultRowRenderer = function () {
+            let iter = -1;
             for (let key in data[KEY_ROWS][idx]) {
+                iter += 1;
+                if (skipColumns.includes(data[KEY_COLUMNS][iter])) {
+                    continue;
+                }
                 row.buildChild("td").buildText(data[KEY_ROWS][idx][key]);
             }
         };
@@ -532,6 +580,10 @@ export function makeBuildable(elem) {
     elem.buildBoolean = function(attr, doBuild) { return buildBoolean(elem, attr, doBuild); };
     elem.buildText = function(text) { return buildText(elem, text); };
     elem.buildHTML = function(html) { return buildHTML(elem, html); };
+    elem.resetHTML = function(html) {
+        elem.innerHTML = "";
+        return buildHTML(elem, html);
+    };
     elem.buildChild = function(tag) { return buildChild(elem, tag); };
     elem.buildRow = function() { return buildChild(elem, "tr"); };
     elem.buildForeach = function(iterable, lambda) {
@@ -552,6 +604,8 @@ export function elemBuilder(tag) {
     makeBuildable(ret);
     return ret;
 }
+
+export function getBuildableById(id) { return makeBuildable(document.getElementById(id)); }
 
 function xHttpSetAuth(config, xhttp) {
     xhttp.setRequestHeader("Authentication-Token", config.authToken);
@@ -879,7 +933,7 @@ function decodeJWT(jwt) {
 
 function getJsonArrayFromStorage(storage, storageKey) {
     let storageObj = storage.getItem(storageKey);
-    if (storageObj === null) {
+    if (!storageObj) {
         storageObj = {};
         storage.setItem(storageKey, JSON.stringify(storageObj));
     } else {
@@ -1048,11 +1102,23 @@ export function script() {
     }
 }
 
+export function prepareQuery(query) {
+    if (query.hasOwnProperty("parameter")) {
+        query["parameters"] = query["parameter"];
+        delete query.parameter;
+    }
+    if (query.hasOwnProperty("select")) {
+        query["query"] = "SELECT " + query["select"];
+        delete query.select;
+    }
+    return query;
+}
+
 export function scriptPrior() {
     return script().previousElementSibling;
 }
 
-export function foreach(query, renderer) {
+export function foreach(query, renderer, asObjects = true) {
     if (query.constructor !== Object) {
         query = formQuery(window.JEQL_CONFIG, query);
     }
@@ -1062,7 +1128,11 @@ export function foreach(query, renderer) {
         document.currentScriptParent = currentScriptParent;
         document.theCurrentScript = curScript;
         for (let i = 0; i <  data[KEY_ROWS].length; i ++) {
-            renderer(tupleToObject(data[KEY_ROWS][i], data[KEY_COLUMNS]));
+            if (asObjects) {
+                renderer(tupleToObject(data[KEY_ROWS][i], data[KEY_COLUMNS]));
+            } else {
+                renderer(data[KEY_ROWS[i]], data[KEY_COLUMNS]);
+            }
         }
     });
 }
@@ -1169,7 +1239,7 @@ function setConnection(config, json) {
     let dataset = json[KEY_CONNECTION]
     let appConfig = getOrSelectAppConfig(config)[KEY_CONNECTIONS];
 
-    if (dataset === null) {
+    if (!dataset) {
         if (Object.keys(appConfig).length > 1) {
             throw new Error("Must supply dataset as multiple datasets exist");
         } else if (appConfig.length === 0) {
@@ -1192,7 +1262,12 @@ export function initPublic(application, onLoad, jaaqlUrl = null) {
 export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl = null,
                      authenticated = true) {
     if (!onLoad) { onLoad = function() {  }; }
-    if (jaaqlUrl === null) { jaaqlUrl = getJaaqlUrl(); }
+
+    if (jaaqlUrl === null) {
+        jaaqlUrl = getJaaqlUrl();
+    } else if (!jaaqlUrl.endsWith("/api")) {
+        jaaqlUrl += "/api";
+    }
 
     let setAuthTokenFunc = function(storage, authToken) {
         let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
@@ -1243,9 +1318,70 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
     return config;
 }
 
-export function signup(data) {
-    data["application"] = window.JEQL_CONFIG.applicationName;
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, function() { alert("Signed up"); }, null, data);
+export function finishSignup(token, onFinished) {
+    let data = {};
+    data[KEY_INVITE_KEY] = token;
+    let preOnFinished = function(data) {
+        if (data.hasOwnProperty(KEY_PARAMETERS)) {
+            onFinished(data[KEY_PARAMETERS]);
+        } else {
+            onFinished();
+        }
+    }
+    requests.makeJson(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, preOnFinished, data)
+}
+
+export function signup(data, onsignup) {
+    if (!onsignup) {
+        onsignup = function() {  };
+    }
+    if (typeof(onsignup) !== "function") {
+        onsignup = function(token) { window.location.replace(handleFunc + "?token=" + token); }
+    }
+    data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, function(ret) { onsignup(ret[KEY_INVITE_KEY]); }, null, data);
+}
+
+export function signupWithToken(token, password, handleFunc) {
+    let data = {};
+    data[KEY_INVITE_KEY] = token;
+    data[KEY_PASSWORD] = password;
+
+    request.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, handleFunc, null, data);
+}
+
+export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe) {
+    if (typeof(handleFunc) !== "function") {
+        handleFunc = function() { window.location.replace(handleFunc + "?token=" + token); }
+    }
+    let preHandleFunc = function(res) {
+        if (rememberMe !== null && rememberMe !== undefined) {
+            window.JEQL_CONFIG.setRememberMe(rememberMe);
+        }
+        window.JEQL_CONFIG.setCredentials({KEY_USERNAME: res[KEY_EMAIL], KEY_PASSWORD: password});
+        getOrSelectAppConfig(window.JEQL_CONFIG, handleFunc, true);
+    }
+    signupWithToken(token, password, handleFunc);
+}
+
+export function signupPoll(token, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
+    let data = {};
+    data[KEY_INVITE_OR_POLL_KEY] = token;
+    let renderFuncs = {};
+    renderFuncs[200] = function(res) {
+        let status = res[KEY_INVITE_KEY_STATUS];
+        if (status === SIGNUP_STARTED) {
+            onStarted();
+        } else if (status === SIGNUP_ALREADY_REGISTERED) {
+            onAlreadyRegistered();
+        } else if (status === SIGNUP_COMPLETED) {
+            onCompleted();
+        } else {
+            setTimeout(function() { signupPoll(token, onStarted, onAlreadyRegistered, onCompleted, onInvalid) }, 1000);
+        }
+    };
+    renderFuncs[422] = onInvalid;
+    request.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_POLL, renderFuncs, null, data);
 }
 
 function callbackDoNotRefreshConnections(res, config) {
