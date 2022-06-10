@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.1.1";
+let VERSION = "2.1.2";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -132,6 +132,7 @@ let KEY_SIZE = "size";
 let KEY_PAGE = "page";
 let KEY_DELETION_KEY = "deletion_key";
 let KEY_INVITE_OR_POLL_KEY = "invite_or_poll_key"
+let KEY_INVITE_CODE = "invite_code"
 let KEY_INVITE_KEY = "invite_key"
 let KEY_INVITE_KEY_STATUS = "invite_key_status"
 let KEY_SUBJECT = "subject"; export {KEY_SUBJECT};
@@ -1364,9 +1365,14 @@ export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe)
     signupWithToken(token, password, handleFunc);
 }
 
-export function signupPoll(token, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
+export function signupStatus(token, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
+    signupStatusWithCode(token, null, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid)
+}
+
+export function signupStatusWithCode(token, code, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
     let data = {};
     data[KEY_INVITE_OR_POLL_KEY] = token;
+    if (code) { data[KEY_INVITE_CODE] = code; }
     let renderFuncs = {};
     renderFuncs[200] = function(res) {
         let status = res[KEY_INVITE_KEY_STATUS];
@@ -1377,7 +1383,7 @@ export function signupPoll(token, onStarted, onAlreadyRegistered, onCompleted, o
         } else if (status === SIGNUP_COMPLETED) {
             onCompleted();
         } else {
-            setTimeout(function() { signupPoll(token, onStarted, onAlreadyRegistered, onCompleted, onInvalid) }, 1000);
+            onFresh();
         }
     };
     renderFuncs[422] = onInvalid;
