@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.1.5";
+let VERSION = "2.1.6";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -1363,7 +1363,9 @@ export function signup(data, onsignup) {
         requests.makeSimple(window.JEQL_CONFIG, ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES, function(templates) {
             data[KEY_TEMPLATE] = templates[KEY_TEMPLATE];
             data[KEY_EXISTING_USER_TEMPLATE] = templates[KEY_EXISTING_USER_TEMPLATE];
-            requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, data);
+            let getTemplateData = {};
+            getTemplateData[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
+            requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, getTemplateData);
         }, null, data);
     } else {
         requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, data);
