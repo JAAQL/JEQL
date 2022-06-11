@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.1.8";
+let VERSION = "2.1.9";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -90,12 +90,12 @@ let ERR_COULD_NOT_FIND_APPLICATION_WITH_NAME = "Could not find application with 
 let ERR_MFA_TIMEOUT_OCCURRED = "MFA timeout hit. Please login again";
 
 let KEY_QUERY = "query";
-let KEY_EMAIL = "email";
+let KEY_EMAIL = "email"; export {KEY_EMAIL};
 let KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE = "default_email_signup_template"; export {KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE};
 let KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE = "default_email_already_signed_up_template"; export {KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE};
 let KEY_TEMPLATE = "template"; export {KEY_TEMPLATE};
 let KEY_EXISTING_USER_TEMPLATE = "existing_user_template"; export {KEY_EXISTING_USER_TEMPLATE};
-let KEY_PARAMETERS = "parameters";
+let KEY_PARAMETERS = "parameters"; export {KEY_PARAMETERS};
 let KEY_DATASET = "dataset"; export {KEY_DATASET};
 let KEY_NODE = "node"; export {KEY_NODE};
 let KEY_PROTOCOL = "protocol"; export {KEY_PROTOCOL};
