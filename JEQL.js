@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.0";
+let VERSION = "2.2.1";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -143,8 +143,8 @@ let KEY_INVITE_KEY_STATUS = "invite_key_status"
 let KEY_SUBJECT = "subject"; export {KEY_SUBJECT};
 let KEY_APP_RELATIVE_PATH = "app_relative_path"; export {KEY_APP_RELATIVE_PATH};
 let KEY_DATA_VALIDATION_TABLE = "data_validation_table"; export {KEY_DATA_VALIDATION_TABLE};
-let KEY_DATA_VALIDATION_VIEW = "data_validation_table"; export {KEY_DATA_VALIDATION_VIEW};
-let KEY_RECIPIENT_VALIDATION_VIEW = "data_validation_table"; export {KEY_RECIPIENT_VALIDATION_VIEW};
+let KEY_DATA_VALIDATION_VIEW = "data_validation_view"; export {KEY_DATA_VALIDATION_VIEW};
+let KEY_RECIPIENT_VALIDATION_VIEW = "recipient_validation_view"; export {KEY_RECIPIENT_VALIDATION_VIEW};
 
 let PROTOCOL_FILE = "file:";
 let LOCAL_DEBUGGING_URL = "http://127.0.0.1:6060";
