@@ -4,8 +4,10 @@ let cur = document.currentScript;
 
 let application = cur.getAttribute("application");
 
-let authenticated = true
+let authenticated = true;
+let doInit = false;
 if (cur.hasAttribute("access")) {
+    doInit = true;
     let access = cur.getAttribute("access");
     if (access === "public") {
         authenticated = false;
@@ -21,10 +23,12 @@ if (cur.hasAttribute("jaaql")) {
     jaaql = cur.getAttribute("jaaql");
 }
 
-if (authenticated) {
-    JEQL.init(application, null, true, jaaql);
-} else {
-    JEQL.initPublic(application, null, jaaql);
+if (doInit) {
+    if (authenticated) {
+        JEQL.init(application, null, true, jaaql);
+    } else {
+        JEQL.initPublic(application, null, jaaql);
+    }
 }
 
 export default JEQL
