@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.1.4";
+let VERSION = "2.1.5";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -29,6 +29,7 @@ let ACTION_FINISH_SIGNUP = "POST /account/signup/finish"
 let ACTION_SIGNUP_POLL = "POST /account/signup/poll"
 let ACTION_LOGIN = "POST /oauth/token";
 let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
+let ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES = "GET /applications/default-email-templates"
 let ACTION_FETCH_APPLICATIONS = "GET /applications";
 let ACTION_INTERNAL_EMAIL_ACCOUNTS = "GET /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS};
 let ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD = "POST /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD};
@@ -90,6 +91,8 @@ let ERR_MFA_TIMEOUT_OCCURRED = "MFA timeout hit. Please login again";
 
 let KEY_QUERY = "query";
 let KEY_EMAIL = "email";
+let KEY_TEMPLATE = "template"; export {KEY_TEMPLATE};
+let KEY_EXISTING_USER_TEMPLATE = "existing_user_template"; export {KEY_EXISTING_USER_TEMPLATE};
 let KEY_PARAMETERS = "parameters";
 let KEY_DATASET = "dataset"; export {KEY_DATASET};
 let KEY_NODE = "node"; export {KEY_NODE};
@@ -1260,35 +1263,50 @@ export function initPublic(application, onLoad, jaaqlUrl = null) {
     init(application, onLoad, false, jaaqlUrl, false);
 }
 
+export function getOrInitJEQLConfig(application, jaaqlUrl) {
+    if (window.hasOwnProperty("JEQL_CONFIG")) {
+        return window.JEQL_CONFIG;
+    } else {
+        if (jaaqlUrl === null) {
+            jaaqlUrl = getJaaqlUrl();
+        } else if (!jaaqlUrl.endsWith("/api")) {
+            jaaqlUrl += "/api";
+        }
+
+        let setAuthTokenFunc = function (storage, authToken) {
+            let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
+            jaaqlTokens[jaaqlUrl] = authToken;
+            storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
+        };
+        let logoutFunc = function (storage, doReload, doCopy, invertedStorage) {
+            if (doCopy) {
+                invertedStorage.setItem(STORAGE_JAAQL_TOKENS, storage.getItem(STORAGE_JAAQL_TOKENS));
+                invertedStorage.setItem(STORAGE_JAAQL_CONFIGS, storage.getItem(STORAGE_JAAQL_CONFIGS));
+            }
+            storage.removeItem(STORAGE_JAAQL_TOKENS);
+            storage.removeItem(STORAGE_JAAQL_CONFIGS);
+            if (doReload) {
+                window.location.reload();
+            }
+        };
+        let config = new requests.RequestConfig(application, jaaqlUrl, ACTION_LOGIN, ACTION_REFRESH, showLoginModal,
+            onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, KEY_USERNAME, resetAppConfig,
+            setAuthTokenFunc, logoutFunc);
+
+        config.setRememberMe(window.localStorage.getItem(STORAGE_JAAQL_TOKENS) !== null);
+
+        window.JEQL_CONFIG = config;
+
+        return config;
+    }
+}
+
 export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl = null,
                      authenticated = true) {
     if (!onLoad) { onLoad = function() {  }; }
 
-    if (jaaqlUrl === null) {
-        jaaqlUrl = getJaaqlUrl();
-    } else if (!jaaqlUrl.endsWith("/api")) {
-        jaaqlUrl += "/api";
-    }
+    let config = getOrInitJEQLConfig(application, jaaqlUrl);
 
-    let setAuthTokenFunc = function(storage, authToken) {
-        let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
-        jaaqlTokens[jaaqlUrl] = authToken;
-        storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
-    };
-    let logoutFunc = function(storage, doReload, doCopy, invertedStorage) {
-        if (doCopy) {
-            invertedStorage.setItem(STORAGE_JAAQL_TOKENS, storage.getItem(STORAGE_JAAQL_TOKENS));
-            invertedStorage.setItem(STORAGE_JAAQL_CONFIGS, storage.getItem(STORAGE_JAAQL_CONFIGS));
-        }
-        storage.removeItem(STORAGE_JAAQL_TOKENS);
-        storage.removeItem(STORAGE_JAAQL_CONFIGS);
-        if (doReload) {
-            window.location.reload();
-        }
-    };
-    let config = new requests.RequestConfig(application, jaaqlUrl, ACTION_LOGIN, ACTION_REFRESH, showLoginModal,
-        onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, KEY_USERNAME, resetAppConfig,
-        setAuthTokenFunc, logoutFunc);
     if (!authenticated) {
         let body = {};
         body[KEY_APPLICATION] = application;
@@ -1300,8 +1318,6 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
         }
         config.setCredentials(credentials);
     }
-    window.JEQL_CONFIG = config;
-    config.setRememberMe(window.localStorage.getItem(STORAGE_JAAQL_TOKENS) !== null);
 
     let jaaqlTokens = getJsonArrayFromStorage(config.getStorage(), STORAGE_JAAQL_TOKENS);
     let authToken = null;
@@ -1340,7 +1356,18 @@ export function signup(data, onsignup) {
         onsignup = function(token) { window.location.replace(handleFunc + "?token=" + token); }
     }
     data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, function(ret) { onsignup(ret[KEY_INVITE_KEY]); }, null, data);
+
+    let signupFunc = function(ret) { onsignup(ret[KEY_INVITE_KEY]); };
+
+    if (!data.hasOwnProperty(data[KEY_TEMPLATE])) {
+        requests.makeSimple(window.JEQL_CONFIG, ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES, function(templates) {
+            data[KEY_TEMPLATE] = templates[KEY_TEMPLATE];
+            data[KEY_EXISTING_USER_TEMPLATE] = templates[KEY_EXISTING_USER_TEMPLATE];
+            requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, data);
+        }, null, data);
+    } else {
+        requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, data);
+    }
 }
 
 export function signupWithToken(token, password, handleFunc) {
