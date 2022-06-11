@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.1.9";
+let VERSION = "2.2.0";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -791,6 +791,16 @@ export function renderLoginInPage(element, callback) {
     element.closeModal = function() { element.innerHTML = ""; }
     makeBuildable(element);
     rendererLogin(element, window.JEQL_CONFIG, callback, null);
+}
+
+export function login(data, rememberMe, loginHandleFunc) {
+    let config = window.JEQL_CONFIG;
+
+    if (rememberMe !== config.rememberMe) {
+        config.logout(false, true);
+        config.setRememberMe(rememberMe);
+    }
+    requests.makeJson(window.JEQL_CONFIG, ACTION_LOGIN, loginHandleFunc, data);
 }
 
 function rendererLogin(modal, config, callback, errMsg) {
