@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.1";
+let VERSION = "2.2.2";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -29,7 +29,7 @@ let ACTION_FINISH_SIGNUP = "POST /account/signup/finish"
 let ACTION_SIGNUP_POLL = "POST /account/signup/poll"
 let ACTION_LOGIN = "POST /oauth/token";
 let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
-let ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES = "GET /applications/default-email-templates"
+let ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES = "GET /applications/default-templates"
 let ACTION_FETCH_APPLICATIONS = "GET /applications";
 let ACTION_INTERNAL_EMAIL_ACCOUNTS = "GET /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS};
 let ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD = "POST /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD};
@@ -1281,8 +1281,13 @@ export function getOrInitJEQLConfig(application, jaaqlUrl) {
     } else {
         if (jaaqlUrl === null) {
             jaaqlUrl = getJaaqlUrl();
-        } else if (!jaaqlUrl.endsWith("/api")) {
-            jaaqlUrl += "/api";
+        } else {
+            if (!jaaqlUrl.startsWith("http")) {
+                jaaqlUrl = "https://" + jaaqlUrl;
+            }
+            if (!jaaqlUrl.endsWith("/api")) {
+                jaaqlUrl += "/api";
+            }
         }
 
         let setAuthTokenFunc = function (storage, authToken) {
@@ -1379,7 +1384,7 @@ export function signup(data, onsignup) {
             data[KEY_TEMPLATE] = templates[KEY_TEMPLATE];
             data[KEY_EXISTING_USER_TEMPLATE] = templates[KEY_EXISTING_USER_TEMPLATE];
             requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, data);
-        }, null, getTemplateData);
+        }, getTemplateData);
     } else {
         requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, data);
     }
