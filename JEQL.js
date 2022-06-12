@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.3";
+let VERSION = "2.2.4";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -1283,7 +1283,7 @@ export function getOrInitJEQLConfig(application, jaaqlUrl) {
             jaaqlUrl = getJaaqlUrl();
         } else {
             if (!jaaqlUrl.startsWith("http")) {
-                jaaqlUrl = "https://" + jaaqlUrl;
+                jaaqlUrl = "https://www." + jaaqlUrl;
             }
             if (!jaaqlUrl.endsWith("/api")) {
                 jaaqlUrl += "/api";
