@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.4";
+let VERSION = "2.2.5";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -26,7 +26,7 @@ let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED}
 let ACTION_SIGNUP = "POST /account/signup/request"
 let ACTION_SIGNUP_WITH_TOKEN = "POST /account/signup/activate"
 let ACTION_FINISH_SIGNUP = "POST /account/signup/finish"
-let ACTION_SIGNUP_POLL = "POST /account/signup/poll"
+let ACTION_SIGNUP_STATUS = "GET /account/signup/status"
 let ACTION_LOGIN = "POST /oauth/token";
 let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
 let ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES = "GET /applications/default-templates"
@@ -912,7 +912,7 @@ export function formatAsTableHeader(inStr) {
     return formatted.replace("_", " ");
 }
 
-function findGetParameter(parameterName) {
+export function findGetParameter(parameterName) {
     let result = null, tmp = [];
     location.search
         .substr(1)
@@ -1362,7 +1362,7 @@ export function finishSignup(token, onFinished) {
             onFinished();
         }
     }
-    requests.makeJson(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, preOnFinished, data)
+    requests.makeJson(window.JEQL_CONFIG, ACTION_FINISH_SIGNUP, preOnFinished, data)
 }
 
 export function signup(data, onsignup) {
@@ -1370,7 +1370,8 @@ export function signup(data, onsignup) {
         onsignup = function() {  };
     }
     if (typeof(onsignup) !== "function") {
-        onsignup = function(token) { window.location.replace(handleFunc + "?token=" + token); }
+        let onsignupStr = onsignup;
+        onsignup = function(token) { window.location.assign(onsignupStr + "?token=" + token); }
     }
     data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
 
@@ -1395,12 +1396,12 @@ export function signupWithToken(token, password, handleFunc) {
     data[KEY_INVITE_KEY] = token;
     data[KEY_PASSWORD] = password;
 
-    request.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, handleFunc, null, data);
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, handleFunc, null, data);
 }
 
 export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe) {
     if (typeof(handleFunc) !== "function") {
-        handleFunc = function() { window.location.replace(handleFunc + "?token=" + token); }
+        handleFunc = function() { window.location.assign(handleFunc + "?token=" + token); }
     }
     let preHandleFunc = function(res) {
         if (rememberMe !== null && rememberMe !== undefined) {
@@ -1434,7 +1435,7 @@ export function signupStatusWithCode(token, code, onFresh, onStarted, onAlreadyR
         }
     };
     renderFuncs[422] = onInvalid;
-    request.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_POLL, renderFuncs, null, data);
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_STATUS, renderFuncs, data);
 }
 
 function callbackDoNotRefreshConnections(res, config) {

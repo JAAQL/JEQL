@@ -286,7 +286,10 @@ export function make(config, action, renderFunc, body, json, ignoreLock = true, 
 }
 
 export function makeJson(config, action, renderFunc, json) {
-	if (config.authLocked) {
+    let isOauth = action === config.authAction;
+    let isRefresh = action === config.refreshAction;
+
+	if (config.authLocked && !isOauth && !isRefresh) {
         let curScriptParent = getScriptParentElement();
         let curScript = getScript();
         config.authQueue.push(function() {
@@ -300,8 +303,6 @@ export function makeJson(config, action, renderFunc, json) {
         config.setConnectionAction(json);
     }
 
-    let isOauth = action === config.authAction;
-    let isRefresh = action === config.refreshAction;
     let username = null;
 
     if (isOauth) {
@@ -358,21 +359,20 @@ export function makeSimple(config, action, renderFunc, body, json, async = true)
     let xhttp = new XMLHttpRequest();
     if (async) {
         xhttp.onreadystatechange = function () {
+            let origRenderFunc;
             if (this.readyState === 4) {
                 config.destroySpinner();
-            }
-
-            let origRenderFunc = renderFunc;
-            if (typeof(renderFunc) === 'object') {
-                renderFunc = renderFunc[200];
-            }
-
-            if (this.readyState === 4 && this.status === 200) {
-                renderFunc(parseResponse(this));
-            } else if (this.readyState === 4 && this.status === 401) {
-                console.log(ERR_UNEXPECTED_CRED_CHALLENGE);
-            } else if (this.readyState === 4) {
-                origRenderFunc[this.status](parseResponse(this));
+                let origRenderFunc = renderFunc;
+                if (typeof(renderFunc) === 'object') {
+                    renderFunc = renderFunc[200];
+                }
+                if (this.status === 200) {
+                    renderFunc(parseResponse(this));
+                } else if (this.status === 401) {
+                    console.log(ERR_UNEXPECTED_CRED_CHALLENGE);
+                } else {
+                    origRenderFunc[this.status](parseResponse(this));
+                }
             }
         };
     }
