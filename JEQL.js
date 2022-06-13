@@ -1401,7 +1401,8 @@ export function signupWithToken(token, password, handleFunc) {
 
 export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe) {
     if (typeof(handleFunc) !== "function") {
-        handleFunc = function() { window.location.assign(handleFunc + "?token=" + token); }
+        let handleFuncStr = handleFunc;
+        handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
     }
     let preHandleFunc = function(res) {
         if (rememberMe !== null && rememberMe !== undefined) {
