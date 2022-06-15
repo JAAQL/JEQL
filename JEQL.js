@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.9";
+let VERSION = "2.2.10";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -797,8 +797,8 @@ export function renderLoginInPage(element, callback) {
 export function login(data, rememberMe, loginHandleFunc) {
     let config = window.JEQL_CONFIG;
 
+    config.logout(false, true);
     if (rememberMe !== config.rememberMe) {
-        config.logout(false, true);
         config.setRememberMe(rememberMe);
     }
     requests.makeJson(window.JEQL_CONFIG, ACTION_LOGIN, loginHandleFunc, data);
@@ -1297,12 +1297,12 @@ export function getOrInitJEQLConfig(application, jaaqlUrl) {
             storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
         };
         let logoutFunc = function (storage, doReload, doCopy, invertedStorage) {
+            storage.removeItem(STORAGE_JAAQL_TOKENS);
+            storage.removeItem(STORAGE_JAAQL_CONFIGS);
             if (doCopy) {
                 invertedStorage.setItem(STORAGE_JAAQL_TOKENS, storage.getItem(STORAGE_JAAQL_TOKENS));
                 invertedStorage.setItem(STORAGE_JAAQL_CONFIGS, storage.getItem(STORAGE_JAAQL_CONFIGS));
             }
-            storage.removeItem(STORAGE_JAAQL_TOKENS);
-            storage.removeItem(STORAGE_JAAQL_CONFIGS);
             if (doReload) {
                 window.location.reload();
             }
@@ -1363,7 +1363,7 @@ export function fetchSignupData(token, onFetched) {
             onFetched({});
         }
     }
-    requests.makeJson(window.JEQL_CONFIG, ACTION_FETCH_SIGNUP, preOnFetched, data);
+    requests.makeBody(window.JEQL_CONFIG, ACTION_FETCH_SIGNUP, preOnFetched, data);
 }
 
 export function finishSignup(token, onFinished) {
