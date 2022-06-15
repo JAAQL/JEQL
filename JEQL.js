@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.5";
+let VERSION = "2.2.7";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -1408,10 +1408,14 @@ export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe)
         if (rememberMe !== null && rememberMe !== undefined) {
             window.JEQL_CONFIG.setRememberMe(rememberMe);
         }
-        window.JEQL_CONFIG.setCredentials({KEY_USERNAME: res[KEY_EMAIL], KEY_PASSWORD: password});
+        let creds = {};
+        creds[KEY_USERNAME] = res[KEY_EMAIL];
+        creds[KEY_PASSWORD] = password;
+        window.JEQL_CONFIG.setCredentials(creds);
+        window.JEQL_CONFIG.authLocked = false;
         getOrSelectAppConfig(window.JEQL_CONFIG, handleFunc, true);
     }
-    signupWithToken(token, password, handleFunc);
+    signupWithToken(token, password, preHandleFunc);
 }
 
 export function signupStatus(token, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
