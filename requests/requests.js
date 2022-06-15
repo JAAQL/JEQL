@@ -241,6 +241,7 @@ export function make(config, action, renderFunc, body, json, ignoreLock = true, 
                 }
                 renderFunc();
             } else if (isRefresh) {
+                config.setAuthToken(res);
                 renderFunc();
             } else {
                 renderFunc(res);
