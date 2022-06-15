@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.7";
+let VERSION = "2.2.8";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -25,6 +25,7 @@ let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED}
 
 let ACTION_SIGNUP = "POST /account/signup/request"
 let ACTION_SIGNUP_WITH_TOKEN = "POST /account/signup/activate"
+let ACTION_FETCH_SIGNUP = "GET /account/signup/fetch"
 let ACTION_FINISH_SIGNUP = "POST /account/signup/finish"
 let ACTION_SIGNUP_STATUS = "GET /account/signup/status"
 let ACTION_LOGIN = "POST /oauth/token";
@@ -1352,17 +1353,26 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
     return config;
 }
 
+export function fetchSignupData(token, onFetched) {
+    let data = {};
+    data[KEY_INVITE_KEY] = token;
+    let preOnFetched = function(data) {
+        if (data.hasOwnProperty(KEY_PARAMETERS)) {
+            onFetched(data[KEY_PARAMETERS]);
+        } else {
+            onFetched({});
+        }
+    }
+    requests.makeJson(window.JEQL_CONFIG, ACTION_FETCH_SIGNUP, preOnFetched, data);
+}
+
 export function finishSignup(token, onFinished) {
     let data = {};
     data[KEY_INVITE_KEY] = token;
-    let preOnFinished = function(data) {
-        if (data.hasOwnProperty(KEY_PARAMETERS)) {
-            onFinished(data[KEY_PARAMETERS]);
-        } else {
-            onFinished();
-        }
+    if (!onFinished) {
+        onFinished = function() {  };
     }
-    requests.makeJson(window.JEQL_CONFIG, ACTION_FINISH_SIGNUP, preOnFinished, data)
+    requests.makeJson(window.JEQL_CONFIG, ACTION_FINISH_SIGNUP, onFinished, data);
 }
 
 export function signup(data, onsignup) {
