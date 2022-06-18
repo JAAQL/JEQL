@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.10";
+let VERSION = "2.2.12";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -21,16 +21,23 @@ let JEQL_FIESTA_ALTERNATIVE = "alternative";
 let SIGNUP_NOT_STARTED = 0; export {SIGNUP_NOT_STARTED};
 let SIGNUP_STARTED = 1; export {SIGNUP_STARTED};
 let SIGNUP_ALREADY_REGISTERED = 2; export {SIGNUP_ALREADY_REGISTERED};
-let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED}
+let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED};
 
-let ACTION_SIGNUP = "POST /account/signup/request"
-let ACTION_SIGNUP_WITH_TOKEN = "POST /account/signup/activate"
-let ACTION_FETCH_SIGNUP = "GET /account/signup/fetch"
-let ACTION_FINISH_SIGNUP = "POST /account/signup/finish"
-let ACTION_SIGNUP_STATUS = "GET /account/signup/status"
+let RESET_NOT_STARTED = 0; export {RESET_NOT_STARTED};
+let RESET_STARTED = 1; export {RESET_STARTED};
+let RESET_COMPLETED = 3; export {RESET_COMPLETED};
+
+let ACTION_SIGNUP = "POST /account/signup/request";
+let ACTION_RESET = "POST /account/reset-password";
+let ACTION_SIGNUP_WITH_TOKEN = "POST /account/signup/activate";
+let ACTION_RESET_WITH_TOKEN = "POST /account/reset-password/reset";
+let ACTION_FETCH_SIGNUP = "GET /account/signup/fetch";
+let ACTION_FINISH_SIGNUP = "POST /account/signup/finish";
+let ACTION_SIGNUP_STATUS = "GET /account/signup/status";
+let ACTION_RESET_STATUS = "GET /account/reset-password/status";
 let ACTION_LOGIN = "POST /oauth/token";
-let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user"
-let ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES = "GET /applications/default-templates"
+let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user";
+let ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES = "GET /applications/default-templates";
 let ACTION_FETCH_APPLICATIONS = "GET /applications";
 let ACTION_INTERNAL_EMAIL_ACCOUNTS = "GET /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS};
 let ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD = "POST /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD};
@@ -94,10 +101,12 @@ let KEY_QUERY = "query";
 let KEY_EMAIL = "email"; export {KEY_EMAIL};
 let KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE = "default_email_signup_template"; export {KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE};
 let KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE = "default_email_already_signed_up_template"; export {KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE};
+let KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE = "default_reset_password_template"; export {KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE};
 let KEY_TEMPLATE = "template"; export {KEY_TEMPLATE};
 let KEY_EXISTING_USER_TEMPLATE = "existing_user_template"; export {KEY_EXISTING_USER_TEMPLATE};
 let KEY_PARAMETERS = "parameters"; export {KEY_PARAMETERS};
 let KEY_DATASET = "dataset"; export {KEY_DATASET};
+let KEY_DEFAULT_DATABASE = "default_database"; export {KEY_DEFAULT_DATABASE};
 let KEY_NODE = "node"; export {KEY_NODE};
 let KEY_PROTOCOL = "protocol"; export {KEY_PROTOCOL};
 let KEY_DATABASE = "database"; export {KEY_DATABASE};
@@ -111,6 +120,7 @@ let KEY_CONNECTION = "connection";
 let KEY_USERNAME = "username"; export {KEY_USERNAME};
 let KEY_ACCOUNT = "account"; export {KEY_ACCOUNT};
 let KEY_ALLOW_CONFIRM_SIGNUP_ATTEMPT = "allow_confirm_signup_attempt"; export {KEY_ALLOW_CONFIRM_SIGNUP_ATTEMPT};
+let KEY_ALLOW_RESET_PASSWORD = "allow_reset_password"; export {KEY_ALLOW_RESET_PASSWORD};
 let KEY_ALLOW_SIGNUP = "allow_signup"; export {KEY_ALLOW_SIGNUP};
 let KEY_PASSWORD = "password"; export {KEY_PASSWORD};
 let KEY_MFA_KEY = "mfa_key";
@@ -138,8 +148,11 @@ let KEY_SIZE = "size";
 let KEY_PAGE = "page";
 let KEY_DELETION_KEY = "deletion_key";
 let KEY_INVITE_OR_POLL_KEY = "invite_or_poll_key"
+let KEY_RESET_OR_POLL_KEY = "reset_or_poll_key"
 let KEY_INVITE_CODE = "invite_code"
+let KEY_RESET_CODE = "reset_code"
 let KEY_INVITE_KEY = "invite_key"
+let KEY_RESET_KEY = "reset_key"
 let KEY_INVITE_KEY_STATUS = "invite_key_status"
 let KEY_SUBJECT = "subject"; export {KEY_SUBJECT};
 let KEY_APP_RELATIVE_PATH = "app_relative_path"; export {KEY_APP_RELATIVE_PATH};
@@ -797,7 +810,7 @@ export function renderLoginInPage(element, callback) {
 export function login(data, rememberMe, loginHandleFunc) {
     let config = window.JEQL_CONFIG;
 
-    config.logout(false, true);
+    config.logout(false);
     if (rememberMe !== config.rememberMe) {
         config.setRememberMe(rememberMe);
     }
@@ -933,7 +946,7 @@ function getJaaqlUrl() {
     if (callLoc === PROTOCOL_FILE) {
         callLoc = LOCAL_DEBUGGING_URL;
     } else {
-        callLoc += "/api"
+        callLoc += window.location.origin + "/api"
     }
 
     return callLoc;
@@ -1296,20 +1309,33 @@ export function getOrInitJEQLConfig(application, jaaqlUrl) {
             jaaqlTokens[jaaqlUrl] = authToken;
             storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
         };
-        let logoutFunc = function (storage, doReload, doCopy, invertedStorage) {
-            storage.removeItem(STORAGE_JAAQL_TOKENS);
-            storage.removeItem(STORAGE_JAAQL_CONFIGS);
-            if (doCopy) {
-                invertedStorage.setItem(STORAGE_JAAQL_TOKENS, storage.getItem(STORAGE_JAAQL_TOKENS));
-                invertedStorage.setItem(STORAGE_JAAQL_CONFIGS, storage.getItem(STORAGE_JAAQL_CONFIGS));
+        let logoutFunc = function (config, storage) {
+            let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
+            let jaaqlConfigs = getJsonArrayFromStorage(storage, STORAGE_JAAQL_CONFIGS);
+            if (jaaqlTokens && jaaqlUrl in jaaqlTokens) {
+                jaaqlTokens.pop(jaaqlUrl);
             }
-            if (doReload) {
-                window.location.reload();
+            if (jaaqlConfigs && jaaqlUrl in jaaqlConfigs) {
+                jaaqlConfigs.pop(jaaqlUrl);
             }
+            storage.setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(jaaqlConfigs));
+            storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
         };
+        let rememberMeFunc = function (config) {
+            let oldStorage = config.getInvertedStorage();
+            let newStorage = config.getStorage();
+            let oldConfigs = getJsonArrayFromStorage(oldStorage, STORAGE_JAAQL_CONFIGS);
+            let newConfigs = getJsonArrayFromStorage(newStorage, STORAGE_JAAQL_CONFIGS);
+            for (let key in oldConfigs) {
+                if (!(key in newConfigs)) {
+                    newConfigs[key] = {};
+                }
+            }
+            config.getStorage().setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(newConfigs));
+        }
         let config = new requests.RequestConfig(application, jaaqlUrl, ACTION_LOGIN, ACTION_REFRESH, showLoginModal,
             onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, KEY_USERNAME, resetAppConfig,
-            setAuthTokenFunc, logoutFunc);
+            rememberMeFunc, setAuthTokenFunc, logoutFunc);
 
         config.setRememberMe(window.localStorage.getItem(STORAGE_JAAQL_TOKENS) !== null);
 
@@ -1375,6 +1401,31 @@ export function finishSignup(token, onFinished) {
     requests.makeJson(window.JEQL_CONFIG, ACTION_FINISH_SIGNUP, onFinished, data);
 }
 
+export function resetPassword(data, onreset) {
+    if (!onreset) {
+        onreset = function() {  };
+    }
+    if (typeof(onreset) !== "function") {
+        let onresetStr = onreset;
+        onreset = function(token) { window.location.assign(onresetStr + "?token=" + token); }
+    }
+    data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
+
+    let resetFunc = function(ret) { onreset(ret[KEY_RESET_KEY]); };
+
+    if (!data.hasOwnProperty(data[KEY_TEMPLATE])) {
+        let getTemplateData = {};
+        getTemplateData[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
+
+        requests.makeSimple(window.JEQL_CONFIG, ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES, function(templates) {
+            data[KEY_TEMPLATE] = templates[KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE];
+            requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetFunc, null, data);
+        }, getTemplateData);
+    } else {
+        requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetFunc, null, data);
+    }
+}
+
 export function signup(data, onsignup) {
     if (!onsignup) {
         onsignup = function() {  };
@@ -1428,6 +1479,33 @@ export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe)
     signupWithToken(token, password, preHandleFunc);
 }
 
+export function resetWithToken(token, password, handleFunc) {
+    let data = {};
+    data[KEY_RESET_KEY] = token;
+    data[KEY_PASSWORD] = password;
+
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET_WITH_TOKEN, handleFunc, null, data);
+}
+
+export function resetWithTokenAndLogin(token, password, handleFunc, rememberMe) {
+    if (typeof(handleFunc) !== "function") {
+        let handleFuncStr = handleFunc;
+        handleFunc = function() { window.location.assign(handleFuncStr); }
+    }
+    let preHandleFunc = function(res) {
+        if (rememberMe !== null && rememberMe !== undefined) {
+            window.JEQL_CONFIG.setRememberMe(rememberMe);
+        }
+        let creds = {};
+        creds[KEY_USERNAME] = res[KEY_EMAIL];
+        creds[KEY_PASSWORD] = password;
+        window.JEQL_CONFIG.setCredentials(creds);
+        window.JEQL_CONFIG.authLocked = false;
+        getOrSelectAppConfig(window.JEQL_CONFIG, handleFunc, true);
+    }
+    resetWithToken(token, password, preHandleFunc);
+}
+
 export function signupStatus(token, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
     signupStatusWithCode(token, null, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid)
 }
@@ -1451,6 +1529,25 @@ export function signupStatusWithCode(token, code, onFresh, onStarted, onAlreadyR
     };
     renderFuncs[422] = onInvalid;
     requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_STATUS, renderFuncs, data);
+}
+
+export function resetStatusWithCode(token, code, onFresh, onStarted, onCompleted, onInvalid) {
+    let data = {};
+    data[KEY_RESET_OR_POLL_KEY] = token;
+    if (code) { data[KEY_RESET_CODE] = code; }
+    let renderFuncs = {};
+    renderFuncs[200] = function(res) {
+        let status = res[KEY_RESET_OR_POLL_KEY];
+        if (status === RESET_STARTED) {
+            onStarted();
+        } else if (status === RESET_COMPLETED) {
+            onCompleted();
+        } else {
+            onFresh();
+        }
+    };
+    renderFuncs[422] = onInvalid;
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET_STATUS, renderFuncs, data);
 }
 
 function callbackDoNotRefreshConnections(res, config) {

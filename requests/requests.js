@@ -5,7 +5,7 @@ let HTTP_STATUS_DEFAULT = "DEFAULT"; export {HTTP_STATUS_DEFAULT};
 
 export class RequestConfig {
     constructor(applicationName, base, authAction, refreshAction, loginFunc, refreshFunc, setXHttpAuth,
-                submitActions, setConnectionAction, usernameField, reloadAppConfigFunc, authTokenSetFunc = null,
+                submitActions, setConnectionAction, usernameField, reloadAppConfigFunc, rememberMeFunc, authTokenSetFunc = null,
                 logoutFunc = null, createSpinner = spinner.createSpinner, destroySpinner = spinner.destroySpinner) {
         this.base = base;
         this.authLocked = true;
@@ -22,6 +22,7 @@ export class RequestConfig {
         this.createSpinner = createSpinner;
         this.destroySpinner = destroySpinner;
         this.authTokenSetFunc = authTokenSetFunc;
+        this.rememberMeFunc = rememberMeFunc;
         this.setXHttpAuth = setXHttpAuth;
         this.rememberMe = true;
         this.logoutFunc = logoutFunc;
@@ -39,12 +40,14 @@ export class RequestConfig {
         if (this.parent) {
             parent.rememberMe = isRememberMe;
         }
+        this.rememberMeFunc(this, isRememberMe);
     }
 
     clone() {
         let ret = new RequestConfig(this.applicationName, this.base, this.authAction, this.refreshAction,
             this.loginFunc, this.refreshFunc, this.setXHttpAuth, this.submitActions, this._setConnectionAction,
-            this.usernameField, this.reloadAppConfigFunc, this.authTokenSetFunc, this.logoutFunc, this.createSpinner, this.destroySpinner);
+            this.usernameField, this.reloadAppConfigFunc, this.rememberMeFunc, this.authTokenSetFunc, this.logoutFunc, this.createSpinner,
+            this.destroySpinner);
         ret.rememberMe = this.rememberMe;
         ret.parent = this;
         ret.authLocked = false;
@@ -57,17 +60,22 @@ export class RequestConfig {
     getStorage() { return this.rememberMe ? window.localStorage : window.sessionStorage; }
     getInvertedStorage() { return this.rememberMe ? window.sessionStorage : window.localStorage; }
 
-    logout(doReload = true, doCopy = false) {
+    logout(doReload = true, configOnly = false) {
         this.credentials = null;
         this.username = null;
+        if (configOnly) { return; }
         this.resetAuthToken();
 
-        if (this.loginFunc !== null) {
-            this.logoutFunc(this.getStorage(), doReload, doCopy, this.getInvertedStorage());
+        if (this.logoutFunc !== null) {
+            this.logoutFunc(this, this.getStorage());
+            this.logoutFunc(this, this.getInvertedStorage());
+            if (doReload) {
+                window.location.reload();
+            }
         }
 
         if (this.parent !== null) {
-            this.parent.logout();
+            this.parent.logout(doReload, true);
         }
     }
 
