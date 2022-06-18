@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.12";
+let VERSION = "2.2.13";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -942,11 +942,11 @@ function getJaaqlUrl() {
     let jaaqlUrl = findGetParameter(PARAMETER_JAAQL);
     if (jaaqlUrl !== null) { return jaaqlUrl; }
 
-    let callLoc = window.location.protocol;
-    if (callLoc === PROTOCOL_FILE) {
+    let callLoc;
+    if (window.location.protocol === PROTOCOL_FILE) {
         callLoc = LOCAL_DEBUGGING_URL;
     } else {
-        callLoc += window.location.origin + "/api"
+        callLoc = window.location.origin + "/api"
     }
 
     return callLoc;
