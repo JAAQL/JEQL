@@ -51,6 +51,7 @@ export class RequestConfig {
         ret.rememberMe = this.rememberMe;
         ret.parent = this;
         ret.authLocked = false;
+        ret.authToken = this.authToken;
         ret.setCredentials(this.credentials);
         return ret;
     }

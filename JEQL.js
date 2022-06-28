@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.13";
+let VERSION = "2.2.14";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -84,6 +84,8 @@ let ACTION_INTERNAL_DATASETS_ADD = "POST /internal/applications/datasets"; expor
 let ACTION_INTERNAL_DATASETS_DEL = "DELETE /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS_DEL};
 let ACTION_INTERNAL_DATASETS_DELCONF = "POST /internal/applications/datasets/confirm-deletion"; export {ACTION_INTERNAL_DATASETS_DELCONF};
 let ACTION_CONFIGURATIONS_ASSIGNED_DATABASES = "GET /configurations/assigned-databases";
+let ACTION_REQUEST_RENDERED_DOCUMENT = "POST /documents";
+let ACTION_DOWNLOAD_RENDERED_DOCUMENT = "GET /documents";
 
 let PARAMETER_JAAQL = "jaaql";
 let PARAMETER_CONFIGURATION = "configuration";
@@ -159,6 +161,10 @@ let KEY_APP_RELATIVE_PATH = "app_relative_path"; export {KEY_APP_RELATIVE_PATH};
 let KEY_DATA_VALIDATION_TABLE = "data_validation_table"; export {KEY_DATA_VALIDATION_TABLE};
 let KEY_DATA_VALIDATION_VIEW = "data_validation_view"; export {KEY_DATA_VALIDATION_VIEW};
 let KEY_RECIPIENT_VALIDATION_VIEW = "recipient_validation_view"; export {KEY_RECIPIENT_VALIDATION_VIEW};
+let KEY_DOCUMENT_ID = "document_id";
+let KEY_AS_ATTACHMENT = "as_attachment";
+let KEY_CREATE_FILE = "create_file";
+
 
 let PROTOCOL_FILE = "file:";
 let LOCAL_DEBUGGING_URL = "http://127.0.0.1:6060";
@@ -1134,7 +1140,7 @@ export function script() {
 
 export function prepareQuery(query) {
     if (query.hasOwnProperty("parameter")) {
-        query["parameters"] = query["parameter"];
+        query[KEY_PARAMETERS] = query["parameter"];
         delete query.parameter;
     }
     if (query.hasOwnProperty("select")) {
@@ -1298,9 +1304,9 @@ export function getOrInitJEQLConfig(application, jaaqlUrl) {
         } else {
             if (!jaaqlUrl.startsWith("http")) {
                 jaaqlUrl = "https://www." + jaaqlUrl;
-            }
-            if (!jaaqlUrl.endsWith("/api")) {
-                jaaqlUrl += "/api";
+                if (!jaaqlUrl.endsWith("/api")) {
+                    jaaqlUrl += "/api";
+                }
             }
         }
 
@@ -1369,6 +1375,9 @@ export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl
         authToken = jaaqlTokens[config.base];
     }
     config.authToken = authToken;
+    if (authenticated && authenticated !== true) {
+        config.authToken = authenticated;
+    }
 
     if (doRenderAccountBanner) {
         renderAccountBanner(config);
@@ -1399,6 +1408,47 @@ export function finishSignup(token, onFinished) {
         onFinished = function() {  };
     }
     requests.makeJson(window.JEQL_CONFIG, ACTION_FINISH_SIGNUP, onFinished, data);
+}
+
+function documentRenderAndDownloadInternal(create_file, name, parameters, callback, asAttachment) {
+    let data = {};
+    data[KEY_NAME] = name;
+    data[KEY_PARAMETERS] = parameters;
+    data[KEY_CREATE_FILE] = create_file;
+
+    let onRespFunc = function(res) {
+        if (asAttachment) {
+            res[KEY_AS_ATTACHMENT] = asAttachment;
+        }
+        let pollFunc = {
+            200: function(subRes) {
+                if (callback) {
+                    callback(subRes);
+                } else {
+                    let link = document.createElement("a");
+                    link.setAttribute("href", subRes);
+                    link.setAttribute("target", "_blank");
+                    document.body.appendChild(link);
+                    link.click();
+                    document.body.removeChild(link);
+                }
+            },
+            425: function() {
+                setTimeout(function() { onRespFunc(res); }, 125);
+            }
+        };
+        requests.makeJson(window.JEQL_CONFIG, ACTION_DOWNLOAD_RENDERED_DOCUMENT, pollFunc, res);
+    }
+
+    requests.makeJson(window.JEQL_CONFIG, ACTION_REQUEST_RENDERED_DOCUMENT, onRespFunc, data);
+}
+
+export function renderDocumentAndDownload(name, parameters, callback, asAttachment) {
+    documentRenderAndDownloadInternal(true, name, parameters, callback, asAttachment);
+}
+
+export function renderDocumentAndFetchUrl(name, parameters, callback) {
+    documentRenderAndDownloadInternal(false, name, parameters, callback);
 }
 
 export function resetPassword(data, onreset) {
