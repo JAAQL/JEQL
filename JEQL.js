@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.14";
+let VERSION = "2.2.15";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -610,11 +610,25 @@ export function makeBuildable(elem) {
         elem.innerHTML = "";
         return buildHTML(elem, html);
     };
-    elem.buildChild = function(tag) { return buildChild(elem, tag); };
+    elem.buildChild = function(tag) {
+        if (typeof tag === 'string') {
+            return buildChild(elem, tag);
+        } else {
+            elem.appendChild(tag);
+            return elem;
+        }
+    };
     elem.buildRow = function() { return buildChild(elem, "tr"); };
     elem.buildForeach = function(iterable, lambda) {
         for (let i = 0; i < iterable.length; i ++) {
-            elem.buildHTML(lambda(iterable[i]));
+            let res = lambda(iterable[i], elem);
+            if (res) {
+                if (typeof res === 'string') {
+                    elem.buildHTML(res);
+                } else {
+                    elem.appendChild(res);
+                }
+            }
         }
         return elem;
     };
@@ -935,7 +949,7 @@ export function formatAsTableHeader(inStr) {
 export function findGetParameter(parameterName) {
     let result = null, tmp = [];
     location.search
-        .substr(1)
+        .substring(1)
         .split("&")
         .forEach(function (item) {
             tmp = item.split("=");
