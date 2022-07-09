@@ -1,8 +1,8 @@
 import "./css_loader.js"  // Will import the CSS
-import * as requests from "./requests/requests.js"; export {requests}
+import * as requests from "./requests/requests.js";
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.15";
+let VERSION = "2.2.16";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -193,6 +193,9 @@ let SORT_DESC = "&nbsp;&#9660;";
 let ATTR_JEQL_DATA = "jeql-data";
 let ATTR_JEQL_PAGING_TABLE = "jeql-paging-table";
 let ATTR_JEQL_SORT_DIRECTION = "jeql-sort-direction";
+
+let ARG_INVITE_TOKEN = "invite_token"; export {ARG_INVITE_TOKEN};
+let ARG_RESET_TOKEN = "reset_token"; export {ARG_RESET_TOKEN};
 
 let ID_LOGIN_MODAL = "jeql-login-modal";
 let ID_LOGIN_ERROR = "jeql-login-error";
@@ -1465,17 +1468,27 @@ export function renderDocumentAndFetchUrl(name, parameters, callback) {
     documentRenderAndDownloadInternal(false, name, parameters, callback);
 }
 
-export function resetPassword(data, onreset) {
+export function resetPassword(data, onreset, errFunc) {
     if (!onreset) {
         onreset = function() {  };
     }
+    if (!errFunc) {
+        errFunc = function() { throw `Could not signup!`; };
+    }
+
     if (typeof(onreset) !== "function") {
         let onresetStr = onreset;
-        onreset = function(token) { window.location.assign(onresetStr + "?token=" + token); }
+        onreset = function(token) {
+            let connector = onresetStr.includes("?") ? "&" : "?";
+            window.location.assign(onresetStr + connector + encodeURIComponent(ARG_RESET_TOKEN) + "=" + encodeURIComponent(token));
+        }
     }
     data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
 
     let resetFunc = function(ret) { onreset(ret[KEY_RESET_KEY]); };
+    let resetDict = {};
+    resetDict[200] = signupFunc;
+    resetDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
 
     if (!data.hasOwnProperty(data[KEY_TEMPLATE])) {
         let getTemplateData = {};
@@ -1483,24 +1496,33 @@ export function resetPassword(data, onreset) {
 
         requests.makeSimple(window.JEQL_CONFIG, ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES, function(templates) {
             data[KEY_TEMPLATE] = templates[KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE];
-            requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetFunc, null, data);
+            requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetDict, null, data);
         }, getTemplateData);
     } else {
-        requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetFunc, null, data);
+        requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetDict, null, data);
     }
 }
 
-export function signup(data, onsignup) {
+export function signup(data, onsignup, errFunc) {
     if (!onsignup) {
         onsignup = function() {  };
     }
+    if (!errFunc) {
+        errFunc = function() { throw `Could not signup!`; };
+    }
     if (typeof(onsignup) !== "function") {
         let onsignupStr = onsignup;
-        onsignup = function(token) { window.location.assign(onsignupStr + "?token=" + token); }
+        onsignup = function(token) {
+            let connector = onsignupStr.includes("?") ? "&" : "?";
+            window.location.assign(onsignupStr + connector + encodeURIComponent(ARG_INVITE_TOKEN) + "=" + encodeURIComponent(token));
+        }
     }
     data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
 
     let signupFunc = function(ret) { onsignup(ret[KEY_INVITE_KEY]); };
+    let signupDict = {};
+    signupDict[200] = signupFunc;
+    signupDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
 
     if (!data.hasOwnProperty(data[KEY_TEMPLATE])) {
         let getTemplateData = {};
@@ -1509,10 +1531,10 @@ export function signup(data, onsignup) {
         requests.makeSimple(window.JEQL_CONFIG, ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES, function(templates) {
             data[KEY_TEMPLATE] = templates[KEY_TEMPLATE];
             data[KEY_EXISTING_USER_TEMPLATE] = templates[KEY_EXISTING_USER_TEMPLATE];
-            requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, data);
+            requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupDict, null, data);
         }, getTemplateData);
     } else {
-        requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupFunc, null, data);
+        requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupDict, null, data);
     }
 }
 
@@ -1524,7 +1546,42 @@ export function signupWithToken(token, password, handleFunc) {
     requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, handleFunc, null, data);
 }
 
-export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe) {
+export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe, onError) {
+    if (typeof(handleFunc) !== "function") {
+        let handleFuncStr = handleFunc;
+        handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
+    }
+    let postHandleFunc = function() {
+        fetchSignupData(token, handleFunc);
+    }
+    let preHandleFunc = function(res) {
+        if (rememberMe !== null && rememberMe !== undefined) {
+            window.JEQL_CONFIG.setRememberMe(rememberMe);
+        }
+        let creds = {};
+        creds[KEY_USERNAME] = res[KEY_EMAIL];
+        creds[KEY_PASSWORD] = password;
+        window.JEQL_CONFIG.setCredentials(creds);
+        window.JEQL_CONFIG.authLocked = false;
+        getOrSelectAppConfig(window.JEQL_CONFIG, postHandleFunc, true);
+    }
+    let preHandleDict = {};
+    preHandleDict[200] = preHandleFunc;
+    if (onError) {
+        preHandleDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
+    }
+    signupWithToken(token, password, preHandleDict);
+}
+
+export function resetWithToken(token, password, handleFunc) {
+    let data = {};
+    data[KEY_INVITE_KEY] = token;
+    data[KEY_PASSWORD] = password;
+
+    requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET_WITH_TOKEN, handleFunc, null, data);
+}
+
+export function resetWithTokenAndLogin(token, password, handleFunc, rememberMe, onError) {
     if (typeof(handleFunc) !== "function") {
         let handleFuncStr = handleFunc;
         handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
@@ -1538,36 +1595,52 @@ export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe)
         creds[KEY_PASSWORD] = password;
         window.JEQL_CONFIG.setCredentials(creds);
         window.JEQL_CONFIG.authLocked = false;
-        getOrSelectAppConfig(window.JEQL_CONFIG, handleFunc, true);
+        let postHandleFunc = function() {
+            if (res.hasOwnProperty(KEY_PARAMETERS)) {
+                handleFunc(res[KEY_PARAMETERS]);
+            } else {
+                handleFunc({});
+            }
+        }
+        getOrSelectAppConfig(window.JEQL_CONFIG, postHandleFunc, true);
     }
-    signupWithToken(token, password, preHandleFunc);
+    let preHandleDict = {};
+    preHandleDict[200] = preHandleFunc;
+    if (onError) {
+        preHandleDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
+    }
+    resetWithToken(token, password, preHandleDict);
 }
 
-export function resetWithToken(token, password, handleFunc) {
-    let data = {};
-    data[KEY_RESET_KEY] = token;
-    data[KEY_PASSWORD] = password;
+export function callLoginDirectly(email, password, rememberMe, onSuccess, onError) {
+    if (rememberMe !== null && rememberMe !== undefined) {
+        window.JEQL_CONFIG.setRememberMe(rememberMe);
+    }
 
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET_WITH_TOKEN, handleFunc, null, data);
+    let preSuccess = function() {
+        getOrSelectAppConfig(window.JEQL_CONFIG, onSuccess, true);
+    }
+
+    let callDict = {};
+    callDict[200] = preSuccess;
+    callDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
+
+    let loginData = {};
+    loginData[KEY_USERNAME] = email;
+    loginData[KEY_PASSWORD] = password
+
+    requests.makeJson(window.JEQL_CONFIG, ACTION_LOGIN, callDict, loginData);
 }
 
-export function resetWithTokenAndLogin(token, password, handleFunc, rememberMe) {
+export function loginWithInviteToken(email, password, rememberMe, token, handleFunc, onError) {
     if (typeof(handleFunc) !== "function") {
         let handleFuncStr = handleFunc;
-        handleFunc = function() { window.location.assign(handleFuncStr); }
+        handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
     }
-    let preHandleFunc = function(res) {
-        if (rememberMe !== null && rememberMe !== undefined) {
-            window.JEQL_CONFIG.setRememberMe(rememberMe);
-        }
-        let creds = {};
-        creds[KEY_USERNAME] = res[KEY_EMAIL];
-        creds[KEY_PASSWORD] = password;
-        window.JEQL_CONFIG.setCredentials(creds);
-        window.JEQL_CONFIG.authLocked = false;
-        getOrSelectAppConfig(window.JEQL_CONFIG, handleFunc, true);
-    }
-    resetWithToken(token, password, preHandleFunc);
+
+    let onSuccess = function() { fetchSignupData(token, handleFunc); }
+
+    callLoginDirectly(email, password, rememberMe, onSuccess, onError);
 }
 
 export function signupStatus(token, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
@@ -1591,7 +1664,7 @@ export function signupStatusWithCode(token, code, onFresh, onStarted, onAlreadyR
             onFresh();
         }
     };
-    renderFuncs[422] = onInvalid;
+    renderFuncs[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
     requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_STATUS, renderFuncs, data);
 }
 
@@ -1610,7 +1683,7 @@ export function resetStatusWithCode(token, code, onFresh, onStarted, onCompleted
             onFresh();
         }
     };
-    renderFuncs[422] = onInvalid;
+    renderFuncs[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
     requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET_STATUS, renderFuncs, data);
 }
 

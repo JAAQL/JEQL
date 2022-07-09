@@ -1,7 +1,12 @@
 import * as spinner from "../spinner/spinner.js"
+import {template} from "../utils/utils.js"
 
 let ERR_UNEXPECTED_CRED_CHALLENGE = "Unexpected credential challenge for request type simple";
 let HTTP_STATUS_DEFAULT = "DEFAULT"; export {HTTP_STATUS_DEFAULT};
+let ANY_STATUS = "ANY_STATUS"; export {ANY_STATUS};
+let ANY_STATUS_EXCEPT_5xx = "ANY_STATUS_EXCEPT_5xx"; export {ANY_STATUS_EXCEPT_5xx};
+let ANY_STATUS_EXCEPT_5xx_OR_400 = "ANY_STATUS_EXCEPT_5xx_OR_400"; export {ANY_STATUS_EXCEPT_5xx_OR_400};
+let ERR_NO_RESPONSE_HANDLER = template`No response handler found for HTTP response with code ${'code'}`
 
 export class RequestConfig {
     constructor(applicationName, base, authAction, refreshAction, loginFunc, refreshFunc, setXHttpAuth,
@@ -376,12 +381,21 @@ export function makeSimple(config, action, renderFunc, body, json, async = true)
                 if (typeof(renderFunc) === 'object') {
                     renderFunc = renderFunc[200];
                 }
+                let is_5xx = this.status.toString()[0] === "5";
                 if (this.status === 200) {
                     renderFunc(parseResponse(this));
                 } else if (this.status === 401) {
                     console.log(ERR_UNEXPECTED_CRED_CHALLENGE);
-                } else {
+                } else if (this.status in origRenderFunc) {
                     origRenderFunc[this.status](parseResponse(this));
+                } else if (ANY_STATUS_EXCEPT_5xx_OR_400 in origRenderFunc && !is_5xx && this.status !== 400) {
+                    origRenderFunc[ANY_STATUS_EXCEPT_5xx_OR_400](parseResponse(this));
+                } else if (ANY_STATUS_EXCEPT_5xx in origRenderFunc && !is_5xx) {
+                    origRenderFunc[ANY_STATUS_EXCEPT_5xx](parseResponse(this));
+                } else if (ANY_STATUS in origRenderFunc) {
+                    origRenderFunc[ANY_STATUS](parseResponse(this));
+                } else {
+                    throw ERR_NO_RESPONSE_HANDLER({code: this.status});
                 }
             }
         };
