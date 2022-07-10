@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.18";
+let VERSION = "2.2.19";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -1750,7 +1750,7 @@ function expiredConnectionHandler(res, config, action, renderFunc, body, json) {
             let newRenderFuncs = {...renderFunc};
             newRenderFuncs[HTTP_STATUS_CONNECTION_EXPIRED] = callbackDoNotRefreshConnections;
 
-            requests.make(config, action, newRenderFuncs, body, json);
+            requests.make(config, action, newRenderFuncs, body, JSON.stringify(json));
         },
         appConfig[KEY_NAME]);
 }
