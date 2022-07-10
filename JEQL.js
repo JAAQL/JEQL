@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js"; export {requests}
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.19";
+let VERSION = "2.2.20";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -1110,7 +1110,7 @@ export function getOrSelectAppConfig(config, afterSelectAppConfig = null, allowF
     let appConfig = getAppConfig(config, allowFromUrl);
 
     if (appConfig !== null && appConfig.constructor === Object && KEY_CONNECTIONS in appConfig &&
-        KEY_NAME in appConfig) {
+        KEY_NAME in appConfig && config.authToken !== null) {
         if (newAfterSelectAppConfig) {
             newAfterSelectAppConfig(config);
             return;
