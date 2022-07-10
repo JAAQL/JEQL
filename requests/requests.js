@@ -74,7 +74,7 @@ export class RequestConfig {
 
         if (this.logoutFunc !== null) {
             this.logoutFunc(this, this.getStorage());
-            this.logoutFunc(this, this.getInvertedStorage());
+            this.logoutFunc(this, this.getInvertedStorage(), true);
             if (doReload) {
                 window.location.reload();
             }

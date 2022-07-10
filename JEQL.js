@@ -2,7 +2,7 @@ import "./css_loader.js"  // Will import the CSS
 import * as requests from "./requests/requests.js";
 let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
 
-let VERSION = "2.2.16";
+let VERSION = "2.2.17";
 console.log("Loaded JEQL library, version " + VERSION);
 
 let HTTP_STATUS_CONNECTION_EXPIRED = 419;
@@ -25,7 +25,7 @@ let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED};
 
 let RESET_NOT_STARTED = 0; export {RESET_NOT_STARTED};
 let RESET_STARTED = 1; export {RESET_STARTED};
-let RESET_COMPLETED = 3; export {RESET_COMPLETED};
+let RESET_COMPLETED = 2; export {RESET_COMPLETED};
 
 let ACTION_SIGNUP = "POST /account/signup/request";
 let ACTION_RESET = "POST /account/reset-password";
@@ -83,6 +83,7 @@ let ACTION_INTERNAL_DATASETS = "GET /internal/applications/datasets"; export {AC
 let ACTION_INTERNAL_DATASETS_ADD = "POST /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS_ADD};
 let ACTION_INTERNAL_DATASETS_DEL = "DELETE /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS_DEL};
 let ACTION_INTERNAL_DATASETS_DELCONF = "POST /internal/applications/datasets/confirm-deletion"; export {ACTION_INTERNAL_DATASETS_DELCONF};
+let ACTION_SEND_EMAIL = "POST /emails"; export {ACTION_SEND_EMAIL};
 let ACTION_CONFIGURATIONS_ASSIGNED_DATABASES = "GET /configurations/assigned-databases";
 let ACTION_REQUEST_RENDERED_DOCUMENT = "POST /documents";
 let ACTION_DOWNLOAD_RENDERED_DOCUMENT = "GET /documents";
@@ -105,6 +106,7 @@ let KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE = "default_email_signup_template"; export 
 let KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE = "default_email_already_signed_up_template"; export {KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE};
 let KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE = "default_reset_password_template"; export {KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE};
 let KEY_TEMPLATE = "template"; export {KEY_TEMPLATE};
+let KEY_ATTACHMENTS = "attachments";
 let KEY_EXISTING_USER_TEMPLATE = "existing_user_template"; export {KEY_EXISTING_USER_TEMPLATE};
 let KEY_PARAMETERS = "parameters"; export {KEY_PARAMETERS};
 let KEY_DATASET = "dataset"; export {KEY_DATASET};
@@ -149,13 +151,14 @@ let KEY_SORT = "sort";
 let KEY_SIZE = "size";
 let KEY_PAGE = "page";
 let KEY_DELETION_KEY = "deletion_key";
-let KEY_INVITE_OR_POLL_KEY = "invite_or_poll_key"
-let KEY_RESET_OR_POLL_KEY = "reset_or_poll_key"
-let KEY_INVITE_CODE = "invite_code"
-let KEY_RESET_CODE = "reset_code"
-let KEY_INVITE_KEY = "invite_key"
-let KEY_RESET_KEY = "reset_key"
-let KEY_INVITE_KEY_STATUS = "invite_key_status"
+let KEY_INVITE_OR_POLL_KEY = "invite_or_poll_key";
+let KEY_RESET_OR_POLL_KEY = "reset_or_poll_key";
+let KEY_INVITE_CODE = "invite_code";
+let KEY_RESET_CODE = "reset_code";
+let KEY_INVITE_KEY = "invite_key";
+let KEY_RESET_KEY = "reset_key";
+let KEY_INVITE_KEY_STATUS = "invite_key_status";
+let KEY_RESET_KEY_STATUS = "reset_key_status";
 let KEY_SUBJECT = "subject"; export {KEY_SUBJECT};
 let KEY_APP_RELATIVE_PATH = "app_relative_path"; export {KEY_APP_RELATIVE_PATH};
 let KEY_DATA_VALIDATION_TABLE = "data_validation_table"; export {KEY_DATA_VALIDATION_TABLE};
@@ -1332,17 +1335,22 @@ export function getOrInitJEQLConfig(application, jaaqlUrl) {
             jaaqlTokens[jaaqlUrl] = authToken;
             storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
         };
-        let logoutFunc = function (config, storage) {
+        let logoutFunc = function (config, storage, wipeComplete) {
             let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
             let jaaqlConfigs = getJsonArrayFromStorage(storage, STORAGE_JAAQL_CONFIGS);
             if (jaaqlTokens && jaaqlUrl in jaaqlTokens) {
-                jaaqlTokens.pop(jaaqlUrl);
+                delete jaaqlTokens[jaaqlUrl];
             }
             if (jaaqlConfigs && jaaqlUrl in jaaqlConfigs) {
-                jaaqlConfigs.pop(jaaqlUrl);
+                delete jaaqlConfigs[jaaqlUrl];
             }
             storage.setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(jaaqlConfigs));
             storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
+
+            if (wipeComplete) {
+                storage.removeItem(STORAGE_JAAQL_TOKENS);
+                storage.removeItem(STORAGE_JAAQL_CONFIGS);
+            }
         };
         let rememberMeFunc = function (config) {
             let oldStorage = config.getInvertedStorage();
@@ -1487,7 +1495,7 @@ export function resetPassword(data, onreset, errFunc) {
 
     let resetFunc = function(ret) { onreset(ret[KEY_RESET_KEY]); };
     let resetDict = {};
-    resetDict[200] = signupFunc;
+    resetDict[200] = resetFunc;
     resetDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
 
     if (!data.hasOwnProperty(data[KEY_TEMPLATE])) {
@@ -1501,6 +1509,19 @@ export function resetPassword(data, onreset, errFunc) {
     } else {
         requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetDict, null, data);
     }
+}
+
+export function sendEmail(template, parameters, attachments, onSuccess, onError) {
+    let data = {};
+    data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
+    data[KEY_PARAMETERS] = parameters;
+    data[KEY_ATTACHMENTS] = attachments;
+    data[KEY_TEMPLATE] = template;
+
+    let resDict = {};
+    resDict[200] = onSuccess;
+    resDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
+    requests.makeJson(window.JEQL_CONFIG, ACTION_SEND_EMAIL, resDict, data);
 }
 
 export function signup(data, onsignup, errFunc) {
@@ -1575,7 +1596,7 @@ export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe,
 
 export function resetWithToken(token, password, handleFunc) {
     let data = {};
-    data[KEY_INVITE_KEY] = token;
+    data[KEY_RESET_KEY] = token;
     data[KEY_PASSWORD] = password;
 
     requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET_WITH_TOKEN, handleFunc, null, data);
@@ -1674,7 +1695,7 @@ export function resetStatusWithCode(token, code, onFresh, onStarted, onCompleted
     if (code) { data[KEY_RESET_CODE] = code; }
     let renderFuncs = {};
     renderFuncs[200] = function(res) {
-        let status = res[KEY_RESET_OR_POLL_KEY];
+        let status = res[KEY_RESET_KEY_STATUS];
         if (status === RESET_STARTED) {
             onStarted();
         } else if (status === RESET_COMPLETED) {
