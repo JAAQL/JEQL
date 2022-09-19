@@ -1,1452 +1,989 @@
-import "./css_loader.js"  // Will import the CSS
-import * as requests from "./requests/requests.js"; export {requests}
-let HTTP_STATUS_DEFAULT = requests.HTTP_STATUS_DEFAULT; export {HTTP_STATUS_DEFAULT};
-
-let VERSION = "2.2.20";
-console.log("Loaded JEQL library, version " + VERSION);
-
-let HTTP_STATUS_CONNECTION_EXPIRED = 419;
-let HTTP_STATUS_OK = 200; export {HTTP_STATUS_OK};
-let HTTP_STATUS_ACCEPTED = 202; export {HTTP_STATUS_ACCEPTED};
-
-let STORAGE_JAAQL_TOKENS = "JAAQL_TOKENS";
-let STORAGE_JAAQL_CONFIGS = "JAAQL_CONFIGS";
-
-let JEQL_FIESTA_INTRODUCER = "introducer";
-let JEQL_FIESTA_EXPRESSION = "expression";
-let JEQL_FIESTA_SEPARATOR = "separator";
-let JEQL_FIESTA_TERMINATOR = "terminator";
-let JEQL_FIESTA_ALTERNATIVE = "alternative";
-
-let SIGNUP_NOT_STARTED = 0; export {SIGNUP_NOT_STARTED};
-let SIGNUP_STARTED = 1; export {SIGNUP_STARTED};
-let SIGNUP_ALREADY_REGISTERED = 2; export {SIGNUP_ALREADY_REGISTERED};
-let SIGNUP_COMPLETED = 3; export {SIGNUP_COMPLETED};
-
-let RESET_NOT_STARTED = 0; export {RESET_NOT_STARTED};
-let RESET_STARTED = 1; export {RESET_STARTED};
-let RESET_COMPLETED = 2; export {RESET_COMPLETED};
-
-let ACTION_SIGNUP = "POST /account/signup/request";
-let ACTION_RESET = "POST /account/reset-password";
-let ACTION_SIGNUP_WITH_TOKEN = "POST /account/signup/activate";
-let ACTION_RESET_WITH_TOKEN = "POST /account/reset-password/reset";
-let ACTION_FETCH_SIGNUP = "GET /account/signup/fetch";
-let ACTION_FINISH_SIGNUP = "POST /account/signup/finish";
-let ACTION_SIGNUP_STATUS = "GET /account/signup/status";
-let ACTION_RESET_STATUS = "GET /account/reset-password/status";
-let ACTION_LOGIN = "POST /oauth/token";
-let ACTION_FETCH_APPLICATION_PUBLIC_USER = "GET /applications/public-user";
-let ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES = "GET /applications/default-templates";
-let ACTION_FETCH_APPLICATIONS = "GET /applications";
-let ACTION_INTERNAL_EMAIL_ACCOUNTS = "GET /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS};
-let ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD = "POST /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_ADD};
-let ACTION_INTERNAL_EMAIL_ACCOUNTS_DEL = "DELETE /internal/emails/accounts"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_DEL};
-let ACTION_INTERNAL_EMAIL_ACCOUNTS_DELCONF = "POST /internal/emails/accounts/confirm-deletion"; export {ACTION_INTERNAL_EMAIL_ACCOUNTS_DELCONF};
-let ACTION_INTERNAL_EMAIL_TEMPLATES = "GET /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES};
-let ACTION_INTERNAL_EMAIL_TEMPLATES_ADD = "POST /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_ADD};
-let ACTION_INTERNAL_EMAIL_TEMPLATES_DEL = "DELETE /internal/emails/templates"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_DEL};
-let ACTION_INTERNAL_EMAIL_TEMPLATES_DELCONF = "POST /internal/emails/templates/confirm-deletion"; export {ACTION_INTERNAL_EMAIL_TEMPLATES_DELCONF};
-let ACTION_INTERNAL_NODES = "GET /internal/nodes"; export {ACTION_INTERNAL_NODES};
-let ACTION_INTERNAL_NODES_ADD = "POST /internal/nodes"; export {ACTION_INTERNAL_NODES_ADD};
-let ACTION_INTERNAL_NODES_DEL = "DELETE /internal/nodes"; export {ACTION_INTERNAL_NODES_DEL};
-let ACTION_INTERNAL_NODES_DELCONF = "POST /internal/nodes/confirm-deletion"; export {ACTION_INTERNAL_NODES_DELCONF};
-let ACTION_INTERNAL_NODE_AUTHS = "GET /internal/nodes/credentials"; export {ACTION_INTERNAL_NODE_AUTHS};
-let ACTION_INTERNAL_NODE_AUTHS_ADD = "POST /internal/nodes/credentials"; export {ACTION_INTERNAL_NODE_AUTHS_ADD};
-let ACTION_INTERNAL_NODE_AUTHS_DEL = "DELETE /internal/nodes/credentials"; export {ACTION_INTERNAL_NODE_AUTHS_DEL};
-let ACTION_INTERNAL_NODE_AUTHS_DELCONF = "POST /internal/nodes/credentials/confirm-deletion"; export {ACTION_INTERNAL_NODE_AUTHS_DELCONF};
-let ACTION_INTERNAL_DATABASES = "GET /internal/databases"; export {ACTION_INTERNAL_DATABASES};
-let ACTION_INTERNAL_DATABASES_ADD = "POST /internal/databases"; export {ACTION_INTERNAL_DATABASES_ADD};
-let ACTION_INTERNAL_DATABASES_DEL = "DELETE /internal/databases"; export {ACTION_INTERNAL_DATABASES_DEL};
-let ACTION_INTERNAL_DATABASES_DELCONF = "POST /internal/databases/confirm-deletion"; export {ACTION_INTERNAL_DATABASES_DELCONF};
-let ACTION_INTERNAL_APPLICATIONS = "GET /internal/applications"; export {ACTION_INTERNAL_APPLICATIONS};
-let ACTION_INTERNAL_APPLICATIONS_ADD = "POST /internal/applications"; export {ACTION_INTERNAL_APPLICATIONS_ADD};
-let ACTION_INTERNAL_APPLICATIONS_DEL = "DELETE /internal/applications"; export {ACTION_INTERNAL_APPLICATIONS_DEL};
-let ACTION_INTERNAL_APPLICATIONS_DELCONF = "POST /internal/applications/confirm-deletion"; export {ACTION_INTERNAL_APPLICATIONS_DELCONF};
-let ACTION_REFRESH = "POST /oauth/refresh";
-let ACTION_SUBMIT = "POST /submit";
-let ACTION_SUBMIT_FILE = "POST /submit-file";
-let ACTION_CONFIGURATIONS = "GET /configurations";
-let ACTION_INTERNAL_ASSIGNED_DATABASES = "GET /internal/applications/configurations/assigned-databases"; export {ACTION_INTERNAL_ASSIGNED_DATABASES};
-let ACTION_INTERNAL_ASSIGNED_DATABASE_ADD = "POST /internal/applications/configurations/assigned-databases"; export {ACTION_INTERNAL_ASSIGNED_DATABASE_ADD};
-let ACTION_INTERNAL_ASSIGNED_DATABASE_DEL = "DELETE /internal/applications/configurations/assigned-databases"; export {ACTION_INTERNAL_ASSIGNED_DATABASE_DEL};
-let ACTION_INTERNAL_ASSIGNED_DATABASE_DELCONF = "POST /internal/applications/configurations/assigned-databases/confirm-deletion"; export {ACTION_INTERNAL_ASSIGNED_DATABASE_DELCONF};
-let ACTION_INTERNAL_CONFIG = "GET /internal/applications/configurations"; export {ACTION_INTERNAL_CONFIG};
-let ACTION_INTERNAL_CONFIG_ADD = "POST /internal/applications/configurations"; export {ACTION_INTERNAL_CONFIG_ADD};
-let ACTION_INTERNAL_CONFIG_DEL = "DELETE /internal/applications/configurations"; export {ACTION_INTERNAL_CONFIG_DEL};
-let ACTION_INTERNAL_CONFIG_DELCONF = "POST /internal/applications/configurations/confirm-deletion"; export {ACTION_INTERNAL_CONFIG_DELCONF};
-let ACTION_INTERNAL_CONFIG_AUTH = "GET /internal/applications/configurations/authorizations"; export {ACTION_INTERNAL_CONFIG_AUTH};
-let ACTION_INTERNAL_CONFIG_AUTH_ADD = "POST /internal/applications/configurations/authorizations"; export {ACTION_INTERNAL_CONFIG_AUTH_ADD};
-let ACTION_INTERNAL_CONFIG_AUTH_DEL = "DELETE /internal/applications/configurations/authorizations"; export {ACTION_INTERNAL_CONFIG_AUTH_DEL};
-let ACTION_INTERNAL_CONFIG_AUTH_DELCONF = "POST /internal/applications/configurations/authorizations/confirm-deletion"; export {ACTION_INTERNAL_CONFIG_AUTH_DELCONF};
-let ACTION_INTERNAL_DATASETS = "GET /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS};
-let ACTION_INTERNAL_DATASETS_ADD = "POST /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS_ADD};
-let ACTION_INTERNAL_DATASETS_DEL = "DELETE /internal/applications/datasets"; export {ACTION_INTERNAL_DATASETS_DEL};
-let ACTION_INTERNAL_DATASETS_DELCONF = "POST /internal/applications/datasets/confirm-deletion"; export {ACTION_INTERNAL_DATASETS_DELCONF};
-let ACTION_SEND_EMAIL = "POST /emails"; export {ACTION_SEND_EMAIL};
-let ACTION_CONFIGURATIONS_ASSIGNED_DATABASES = "GET /configurations/assigned-databases";
-let ACTION_REQUEST_RENDERED_DOCUMENT = "POST /documents";
-let ACTION_DOWNLOAD_RENDERED_DOCUMENT = "GET /documents";
-
-let PARAMETER_JAAQL = "jaaql";
-let PARAMETER_CONFIGURATION = "configuration";
-
-let JWT_KEY_CONFIG_NAME = "name";
-
-let ERR_WIPING_CONFIG = "Error when loading app config, wiping config";
-let ERR_IMPERATIVE_APP_CONFIG_FAILED = "Tried to get app config in an imperative manner yet app config was not set";
-let ERR_NO_FOUND_CONFIGURATION_FOR_USER = "No configuration found for user";
-let ERR_COULD_NOT_REFRESH_APP_CONFIG = "Could not refresh app config connection token";
-let ERR_COULD_NOT_FIND_APPLICATION_WITH_NAME = "Could not find application with name ";
-let ERR_MFA_TIMEOUT_OCCURRED = "MFA timeout hit. Please login again";
-
-let KEY_QUERY = "query";
-let KEY_EMAIL = "email"; export {KEY_EMAIL};
-let KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE = "default_email_signup_template"; export {KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE};
-let KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE = "default_email_already_signed_up_template"; export {KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE};
-let KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE = "default_reset_password_template"; export {KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE};
-let KEY_TEMPLATE = "template"; export {KEY_TEMPLATE};
-let KEY_ATTACHMENTS = "attachments";
-let KEY_EXISTING_USER_TEMPLATE = "existing_user_template"; export {KEY_EXISTING_USER_TEMPLATE};
-let KEY_PARAMETERS = "parameters"; export {KEY_PARAMETERS};
-let KEY_DATASET = "dataset"; export {KEY_DATASET};
-let KEY_DEFAULT_DATABASE = "default_database"; export {KEY_DEFAULT_DATABASE};
-let KEY_NODE = "node"; export {KEY_NODE};
-let KEY_PROTOCOL = "protocol"; export {KEY_PROTOCOL};
-let KEY_DATABASE = "database"; export {KEY_DATABASE};
-let KEY_FORCE_TRANSACTIONAL = "force_transactional"; export {KEY_FORCE_TRANSACTIONAL};
-let KEY_ROWS = "rows"; export {KEY_ROWS};
-let KEY_COLUMNS = "columns"; export {KEY_COLUMNS};
-let KEY_PORT = "port"; export {KEY_PORT};
-let KEY_ADDRESS = "address"; export {KEY_ADDRESS};
-let KEY_DELETED = "deleted"; export {KEY_DELETED};
-let KEY_CONNECTION = "connection";
-let KEY_USERNAME = "username"; export {KEY_USERNAME};
-let KEY_ACCOUNT = "account"; export {KEY_ACCOUNT};
-let KEY_ALLOW_CONFIRM_SIGNUP_ATTEMPT = "allow_confirm_signup_attempt"; export {KEY_ALLOW_CONFIRM_SIGNUP_ATTEMPT};
-let KEY_ALLOW_RESET_PASSWORD = "allow_reset_password"; export {KEY_ALLOW_RESET_PASSWORD};
-let KEY_ALLOW_SIGNUP = "allow_signup"; export {KEY_ALLOW_SIGNUP};
-let KEY_PASSWORD = "password"; export {KEY_PASSWORD};
-let KEY_MFA_KEY = "mfa_key";
-let KEY_PRE_AUTH_KEY = "pre_auth_key";
-let KEY_CONFIGURATION = "configuration"; export {KEY_CONFIGURATION};
-let KEY_APPLICATION = "application"; export {KEY_APPLICATION};
-let KEY_DESCRIPTION = "description"; export {KEY_DESCRIPTION};
-let KEY_URL = "url"; export {KEY_URL};
-let KEY_PUBLIC_USERNAME = "public_username"; export {KEY_PUBLIC_USERNAME};
-let KEY_ROLE = "role"; export {KEY_ROLE};
-let KEY_PRECEDENCE = "precedence"; export {KEY_PRECEDENCE};
-let KEY_CONNECTIONS = "connections";
-let KEY_NAME = "name"; export {KEY_NAME};
-let KEY_SEND_NAME = "send_name"; export {KEY_SEND_NAME};
-let KEY_HOST = "host"; export {KEY_HOST};
-let KEY_DATA = "data"; export {KEY_DATA};
-let KEY_CREATE = "create"; export {KEY_CREATE};
-let KEY_DROP = "drop"; export {KEY_DROP};
-let KEY_CREATE_USERNAME = "create_username"; export {KEY_CREATE_USERNAME};
-let KEY_RECORDS_TOTAL = "records_total";
-let KEY_RECORDS_FILTERED = "records_filtered";
-let KEY_SEARCH = "search";
-let KEY_SORT = "sort";
-let KEY_SIZE = "size";
-let KEY_PAGE = "page";
-let KEY_DELETION_KEY = "deletion_key";
-let KEY_INVITE_OR_POLL_KEY = "invite_or_poll_key";
-let KEY_RESET_OR_POLL_KEY = "reset_or_poll_key";
-let KEY_INVITE_CODE = "invite_code";
-let KEY_RESET_CODE = "reset_code";
-let KEY_INVITE_KEY = "invite_key";
-let KEY_RESET_KEY = "reset_key";
-let KEY_INVITE_KEY_STATUS = "invite_key_status";
-let KEY_RESET_KEY_STATUS = "reset_key_status";
-let KEY_SUBJECT = "subject"; export {KEY_SUBJECT};
-let KEY_APP_RELATIVE_PATH = "app_relative_path"; export {KEY_APP_RELATIVE_PATH};
-let KEY_DATA_VALIDATION_TABLE = "data_validation_table"; export {KEY_DATA_VALIDATION_TABLE};
-let KEY_DATA_VALIDATION_VIEW = "data_validation_view"; export {KEY_DATA_VALIDATION_VIEW};
-let KEY_RECIPIENT_VALIDATION_VIEW = "recipient_validation_view"; export {KEY_RECIPIENT_VALIDATION_VIEW};
-let KEY_DOCUMENT_ID = "document_id";
-let KEY_AS_ATTACHMENT = "as_attachment";
-let KEY_CREATE_FILE = "create_file";
-
-
-let PROTOCOL_FILE = "file:";
-let LOCAL_DEBUGGING_URL = "http://127.0.0.1:6060";
-
-let CLS_MODAL_OUTER = "jeql-modal-outer";
-let CLS_MODAL = "jeql-modal"; export {CLS_MODAL};
-let CLS_MODAL_WIDE = "jeql-modal-wide"; export {CLS_MODAL_WIDE};
-let CLS_MODAL_WIDEST = "jeql-modal-widest"; export {CLS_MODAL_WIDEST};
-let CLS_MODAL_AUTO = "jeql-modal-auto"; export {CLS_MODAL_AUTO};
-let CLS_BUTTON = "jeql-button"; export {CLS_BUTTON};
-let CLS_BUTTON_YES = "jeql-button-yes"; export {CLS_BUTTON_YES};
-let CLS_BUTTON_NO = "jeql-button-no"; export {CLS_BUTTON_NO};
-let CLS_MODAL_CLOSE = "jeql-modal-close";
-let CLS_CURSOR_POINTER = "jeql-cursor-pointer";
-let CLS_CENTER = "jeql-center";
-let CLS_INPUT_MFA = "jeql-input-mfa";
-let CLS_SELECTED_APP_CONFIG = "jeql-selected-app-config";
-let CLS_JEQL_TABLE_HEADER = "jeql-table-header";
-let CLS_JEQL_TABLE_HEADER_SORT = "jeql-table-header-sort";
-let CLS_JEQL_TABLE_HEADER_SORT_SPAN = "jeql-table-header-sort-span";
-
-let SORT_DEFAULT = "&nbsp;-";
-let SORT_ASC = "&nbsp;&#9650;";
-let SORT_DESC = "&nbsp;&#9660;";
-
-let ATTR_JEQL_DATA = "jeql-data";
-let ATTR_JEQL_PAGING_TABLE = "jeql-paging-table";
-let ATTR_JEQL_SORT_DIRECTION = "jeql-sort-direction";
-
-let ARG_INVITE_TOKEN = "invite_token"; export {ARG_INVITE_TOKEN};
-let ARG_RESET_TOKEN = "reset_token"; export {ARG_RESET_TOKEN};
-
-let ID_LOGIN_MODAL = "jeql-login-modal";
-let ID_LOGIN_ERROR = "jeql-login-error";
-let ID_USERNAME = "jeql-username";
-let ID_PASSWORD = "jeql-password";
-let ID_REMEMBER_ME = "jeql-remember-me";
-let ID_MFA_0 = "jeql-mfa-0";
-let ID_MFA_1 = "jeql-mfa-1";
-let ID_MFA_2 = "jeql-mfa-2";
-let ID_MFA_3 = "jeql-mfa-3";
-let ID_MFA_4 = "jeql-mfa-4";
-let ID_MFA_5 = "jeql-mfa-5";
-let ID_LOGIN_BUTTON = "jeql-login-button";
-let ID_SELECT_APP_CONFIG = "jeql-select-app-config-";
-let ID_PAGING_REFRESH_BUTTON = "refresh";
-let ID_PAGING_FILTERED = "filtered";
-let ID_PAGING_TOTAL = "total";
-let ID_PAGING_PAGES = "pages";
-let ID_PAGING_SIZE = "size";
-let ID_PAGING_FROM = "from";
-let ID_PAGING_TO = "to";
-let ID_PAGING_CUR_PAGE = "cur";
-let ID_PAGING_SORT = "sort";
-let ID_PAGING_SEARCH = "search";
-let ID_PAGING_LAST_SEARCH = "last-search";
-
-let CLS_INPUT = "jeql-input";
-
-let AUTH_MFA_EXPIRY_MS = 120000;
-
-export function getSearchObj(page, size, search, sort) {
-    let obj = {};
-    obj[KEY_PAGE] = page;
-    obj[KEY_SIZE] = size;
-    obj[KEY_SEARCH] = search;
-    obj[KEY_SORT] = sort;
-    return obj;
-}
-
-export function modalExists() {
-    return document.body.getElementsByClassName(CLS_MODAL).length !== 0;
-}
-
-export function doConfirmDelete(config, data, actionDel, actionDelConf, onComplete) {
-    requests.makeBody(window.JEQL_CONFIG, actionDel, function(res) {
-        data = {};
-        data[KEY_DELETION_KEY] = res[KEY_DELETION_KEY];
-        requests.makeJson(window.JEQL_CONFIG, actionDelConf, onComplete, data);
-    }, data);
-}
-
-export function simpleSearchTransformer(cols) {
-    return function(search) {
-        if (search === "") { return search; }
-        let simplified = "";
-        for (let i = 0; i < cols.length; i ++) {
-            if (i !== 0) { simplified += " OR "; }
-            simplified += cols[i] + " LIKE '%" + search + "%'"
-        }
-        return simplified;
-    }
-}
-
-export function pagedTableUpdate(table, data) {
-    let tableId = table.id;
-    let refreshId = tableId + "-" + ID_PAGING_REFRESH_BUTTON;
-    let totalId = tableId + "-" + ID_PAGING_TOTAL;
-    let filteredId = tableId + "-" + ID_PAGING_FILTERED;
-    let fromId = tableId + "-" + ID_PAGING_FROM;
-    let toId = tableId + "-" + ID_PAGING_TO;
-    let curPageElem = document.getElementById(tableId + "-" + ID_PAGING_CUR_PAGE);
-    let curPage = parseInt(curPageElem.innerText);
-    let pagesElem = document.getElementById(tableId + "-" + ID_PAGING_PAGES);
-    let pageSize = parseInt(document.getElementById(tableId + "-" + ID_PAGING_SIZE).value);
-    let numPages = Math.ceil(data[KEY_RECORDS_FILTERED] / pageSize);
-    let pageButtonClickFunc = function(event) {
-        curPageElem.innerText = event.target.innerHTML;
-        document.getElementById(refreshId).click();
-    };
-
-    pagesElem.innerHTML = "";
-    pagesElem.appendChild(elemBuilder("button").buildText("1").buildBoolean("disabled",
-        curPage === 1).buildEventListener("click", pageButtonClickFunc));
-    if (curPage > 3) {
-        if (numPages < 8 || curPage === 4) {
-            pagesElem.appendChild(elemBuilder("button").buildText("2").buildBoolean("disabled",
-                curPage === 2).buildEventListener("click", pageButtonClickFunc));
-        } else {
-            pagesElem.appendChild(elemBuilder("button").buildText("...").buildBoolean("disabled", true));
-        }
-    }
-    if (numPages > 6 && numPages === curPage) {
-        let curNum = curPage - 4;
-        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-    }
-    if (numPages > 5 && numPages - curPage < 2 && curPage > 5) {
-        let curNum = curPage - 3;
-        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-    }
-    if (numPages > 4 && numPages - curPage < 3 && curPage > 4) {
-        let curNum = curPage - 2;
-        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-    }
-    if (numPages > 1 && curPage - 1 !== numPages) {
-        let curNum = curPage > 2 ? curPage - 1 : 2;
-        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-    }
-    if (numPages > 2 && curPage !== numPages) {
-        let curNum = curPage > 3 ? curPage : 3;
-        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-    }
-    if (numPages > 3 && curPage < numPages && (numPages !== curPage + 1 || numPages === 4)) {
-        let curNum = curPage > 3 ? curPage + 1 : 4;
-        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-    }
-    if (numPages > 6 && curPage < 4) {
-        let curNum = 5;
-        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-    }
-    if (numPages - curPage > 2 && numPages > 5) {
-        if (numPages < 8 || numPages - curPage < 4) {
-            let curNum = numPages - 1;
-            pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-                curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-        } else {
-            pagesElem.appendChild(elemBuilder("button").buildText("...").buildBoolean("disabled", true));
-        }
-    }
-    if (numPages > 4 || (numPages === curPage && (curPage === 3 || curPage === 4))) {
-        let curNum = numPages;
-        pagesElem.appendChild(elemBuilder("button").buildText(curNum.toString()).buildBoolean("disabled",
-            curPage === curNum).buildEventListener("click", pageButtonClickFunc));
-    }
-
-    document.getElementById(totalId).innerText = data[KEY_RECORDS_TOTAL];
-    document.getElementById(filteredId).innerText = data[KEY_RECORDS_FILTERED];
-    if (data[KEY_RECORDS_FILTERED] === 0) {
-        document.getElementById(fromId).innerText = "0";
-    } else {
-        document.getElementById(fromId).innerText = (curPage * pageSize - pageSize + 1).toString();
-    }
-    document.getElementById(toId).innerText = Math.min((curPage * pageSize), data[KEY_RECORDS_FILTERED]).toString();
-}
-
-export function getPagedSearchingTableRefreshButton(tableId) {
-    return document.getElementById(tableId + "-" + ID_PAGING_REFRESH_BUTTON);
-}
-
-export function setPagedSearchingTableSortField(tableId, sort) {
-    document.getElementById(tableId + "-" + ID_PAGING_SORT).innerText = sort;
-}
-
-export function pagedSearchingTable(table, onChange, searchTransformer = null) {
-    if (!searchTransformer) {
-        searchTransformer = function(ret) { return ret; }
-    }
-    makeBuildable(table);
-    table.buildBoolean(ATTR_JEQL_PAGING_TABLE, true);
-    let tableId = table.id;
-    let refreshId = tableId + "-" + ID_PAGING_REFRESH_BUTTON;
-    let totalId = tableId + "-" + ID_PAGING_TOTAL;
-    let filteredId = tableId + "-" + ID_PAGING_FILTERED;
-    let pagesId = tableId + "-" + ID_PAGING_PAGES;
-    let sizeId = tableId + "-" + ID_PAGING_SIZE;
-    let fromId = tableId + "-" + ID_PAGING_FROM;
-    let searchId = tableId + "-" + ID_PAGING_SEARCH;
-    let lastSearchId = tableId + "-" + ID_PAGING_LAST_SEARCH;
-    let toId = tableId + "-" + ID_PAGING_TO;
-    let curPageId = tableId + "-" + ID_PAGING_CUR_PAGE;
-    let sortId = tableId + "-" + ID_PAGING_SORT;
-    table.buildOlderSibling("div").buildHTML(`
-        <label>
-            Search: 
-            <input type="text" id="${searchId}"/>
-        </label>
-        <label>
-            Page Size:
-            <select id="${sizeId}">
-                <option value="10">10</option>
-                <option value="25">25</option>
-                <option value="50">50</option>
-                <option value="100">100</option>
-                <option value="250">250</option>
-                <option value="999999999">All</option>
-            </select>
-        </label>
-        <button id="${refreshId}">Search</button>
-        <span id="${curPageId}" style="display:none">1</span>
-        <span id="${sortId}" style="display:none"></span>
-        <span id="${lastSearchId}" style="display:none"></span>
-    `);
-    table.buildSibling("div").buildHTML(`
-        <div id="${pagesId}"></div><div>Showing <span id="${fromId}"></span> to <span id="${toId}"></span> of <span id="${filteredId}"></span>/<span id="${totalId}"> records</span></div>
-    `);
-    makeBuildable(document.getElementById(pagesId));
-    document.getElementById(sizeId).addEventListener("change", function() {
-        document.getElementById(curPageId).innerText = "1";
-        onChange(0, parseInt(document.getElementById(sizeId).value),
-            searchTransformer(document.getElementById(searchId).value), document.getElementById(sortId).innerText);
-    });
-    document.getElementById(refreshId).addEventListener("click", function() {
-        if (document.getElementById(lastSearchId).innerHTML !== document.getElementById(searchId).value) {
-            document.getElementById(curPageId).innerText = "1";
-        }
-        document.getElementById(lastSearchId).value = document.getElementById(searchId).value;
-        onChange(parseInt(document.getElementById(curPageId).innerText) - 1,
-            parseInt(document.getElementById(sizeId).value), searchTransformer(document.getElementById(searchId).value),
-            document.getElementById(sortId).innerText);
-    });
-    onChange(0, 10, searchTransformer(document.getElementById(searchId).value), "");
-}
-
-function buildChild(elem, tag) {
-    let child = elemBuilder(tag);
-    elem.appendChild(child);
-    return child;
-}
-
-function buildClass(elem, classOrClasses) {
-   if (!Array.isArray(classOrClasses)) {
-       classOrClasses = [classOrClasses];
-   }
-
-   for (let curClass in classOrClasses) {
-       elem.classList.add(classOrClasses[curClass]);
-   }
-
-   return elem;
-}
-
-function buildOlderSibling(elem, tag) {
-    let sibling = elemBuilder(tag);
-    elem.parentNode.insertBefore(sibling, elem);
-    return sibling;
-}
-
-function buildSibling(elem, tag) {
-    let sibling = elemBuilder(tag);
-    elem.after(sibling);
-    return sibling;
-}
-
-function buildAttr(elem, attr, value) {
-    elem.setAttribute(attr, value);
-    return elem;
-}
-
-function buildText(elem, text) {
-    elem.innerText = text;
-    return elem;
-}
-
-function buildHTML(elem, html) {
-    elem.innerHTML += html;
-    return elem;
-}
-
-export function tupleToObject(row, columns) {
-    let obj = {};
-    for (let i2 = 0; i2 < columns.length; i2 ++) {
-        if (columns[i2].constructor === Object) {
-            let objKey = Object.keys(columns[i2])[0];
-            let subResponse = {};
-            subResponse[KEY_COLUMNS] = columns[i2][objKey];
-            subResponse[KEY_ROWS] = row[i2];
-            obj[objKey] = tuplesToObjects(subResponse);
-        } else {
-            obj[columns[i2]] = row[i2];
-        }
-    }
-    return obj;
-}
-
-export function tuplesToObjects(response) {
-    let columns = response[KEY_COLUMNS];
-    let rows = response[KEY_ROWS];
-    let ret = [];
-
-    for (let i = 0; i < rows.length; i ++) {
-        ret.push(tupleToObject(rows[i], columns));
-    }
-
-    return ret;
-}
-
-export function objectsToTuples(response) {
-    let ret = {};
-    ret[KEY_COLUMNS] = [];
-    ret[KEY_ROWS] = [];
-    for (let i = 0; i < response.length; i ++) {
-        if (i === 0) {
-            ret[KEY_COLUMNS] = Object.keys(response[i]);
-        }
-        let row = [];
-        for (let i2 = 0; i2 < ret[KEY_COLUMNS].length; i2 ++) {
-            row.push(response[i][ret[KEY_COLUMNS][i2]]);
-        }
-        ret[KEY_ROWS].push(row);
-    }
-    return ret;
-}
-
-export function tableRenderer(data, table, rowRenderer, skipColumns) {
-    if (!skipColumns) {
-        skipColumns = [];
-    }
-
-    let oldSortCol = null;
-    let oldSortDir = null;
-
-    if (!table) {
-        table = elemBuilder(table);
-        document.body.appendChild(table);
-    } else {
-        let oldHeaders = table.getElementsByClassName(CLS_JEQL_TABLE_HEADER_SORT);
-        for (let i = 0; i < oldHeaders.length; i ++) {
-            let span = oldHeaders[i].getElementsByClassName(CLS_JEQL_TABLE_HEADER_SORT_SPAN)[0];
-            if (span.getAttribute(ATTR_JEQL_SORT_DIRECTION) !== SORT_DEFAULT) {
-                oldSortCol = oldHeaders[i].childNodes[0].data;
-                oldSortDir = span.getAttribute(ATTR_JEQL_SORT_DIRECTION);
-            }
-        }
-        table.innerHTML = "";
-        makeBuildable(table);
-    }
-    let isPagingTable = table.getAttribute(ATTR_JEQL_PAGING_TABLE);
-    let header = table.buildChild("tr");
-    for (let idx in Object.keys(data[KEY_COLUMNS])) {
-        if (skipColumns.includes(data[KEY_COLUMNS][idx])) {
-            continue;
-        }
-        let headerText = formatAsTableHeader(data[KEY_COLUMNS][idx]);
-        let th = header.buildChild("th").buildClass(CLS_JEQL_TABLE_HEADER).buildText(headerText);
-        if (isPagingTable) {
-            th.buildClass(CLS_JEQL_TABLE_HEADER_SORT);
-            let span = th.buildChild("span").buildClass(CLS_JEQL_TABLE_HEADER_SORT_SPAN).buildHTML(
-                SORT_DEFAULT).buildAttr(ATTR_JEQL_SORT_DIRECTION, SORT_DEFAULT);
-            if (headerText === oldSortCol) {
-                span.buildAttr(ATTR_JEQL_SORT_DIRECTION, oldSortDir);
-                span.innerHTML = oldSortDir;
-            }
-            th.buildEventListener().buildEventListener("click", function() {
-                if (span.getAttribute(ATTR_JEQL_SORT_DIRECTION) === SORT_DEFAULT) {
-                    span.innerHTML = SORT_ASC;
-                    span.setAttribute(ATTR_JEQL_SORT_DIRECTION, SORT_ASC);
-                    let sorts = table.getElementsByClassName(CLS_JEQL_TABLE_HEADER_SORT_SPAN);
-                    for (let i = 0; i < sorts.length; i ++) {
-                        if (sorts[i] !== span) {
-                            sorts[i].setAttribute(ATTR_JEQL_SORT_DIRECTION, SORT_DEFAULT);
-                            sorts[i].innerHTML = SORT_DEFAULT;
-                        }
-                    }
-                    setPagedSearchingTableSortField(table.id, data[KEY_COLUMNS][idx] + " ASC");
-                } else if (span.getAttribute(ATTR_JEQL_SORT_DIRECTION) === SORT_ASC) {
-                    span.innerHTML = SORT_DESC;
-                    span.setAttribute(ATTR_JEQL_SORT_DIRECTION, SORT_DESC);
-                    setPagedSearchingTableSortField(table.id, data[KEY_COLUMNS][idx] + " DESC");
-                } else /*if (span.getAttribute(ATTR_JEQL_SORT_DIRECTION) === SORT_DESC)*/ {
-                    span.innerHTML = SORT_DEFAULT;
-                    span.setAttribute(ATTR_JEQL_SORT_DIRECTION, SORT_DEFAULT);
-                    setPagedSearchingTableSortField(table.id, "");
-                }
-                getPagedSearchingTableRefreshButton(table.id).click();
+let JEQL_UTILS = {
+    template: function(strings, ...keys) {
+        return (function(...values) {
+            let dict = values[values.length - 1] || {};
+            let result = [strings[0]];
+            keys.forEach(function(key, i) {
+                let value = Number.isInteger(key) ? values[key] : dict[key];
+                result.push(value, strings[i + 1]);
             });
-        }
-    }
-    header.buildChild("th");
-    for (let idx in data[KEY_ROWS]) {
-        let row = table.buildChild("tr");
-        let defaultRowRenderer = function () {
-            let iter = -1;
-            for (let key in data[KEY_ROWS][idx]) {
-                iter += 1;
-                if (skipColumns.includes(data[KEY_COLUMNS][iter])) {
-                    continue;
-                }
-                row.buildChild("td").buildText(data[KEY_ROWS][idx][key]);
-            }
-        };
-        if (rowRenderer) {
-            rowRenderer(row, data, idx, defaultRowRenderer);
-        } else {
-            defaultRowRenderer();
-        }
-    }
-}
-
-function buildBoolean(elem, attr, doBuild) {
-    if (doBuild) {
-        elem.setAttribute(attr, attr);
-    }
-    return elem;
-}
-
-function buildEventListener(elem, event, onevent) {
-    elem.addEventListener(event, onevent);
-    return elem;
-}
-
-export function makeBuildable(elem) {
-    elem.removeElement = function() { elem.parentNode.removeChild(elem); }
-    elem.buildClass = function(classOrClasses) { return buildClass(elem, classOrClasses); };
-    elem.buildAttr = function(attr, value) { return buildAttr(elem, attr, value); };
-    elem.buildBoolean = function(attr, doBuild) { return buildBoolean(elem, attr, doBuild); };
-    elem.buildText = function(text) { return buildText(elem, text); };
-    elem.buildHTML = function(html) { return buildHTML(elem, html); };
-    elem.resetHTML = function(html) {
-        elem.innerHTML = "";
-        return buildHTML(elem, html);
-    };
-    elem.buildChild = function(tag) {
-        if (typeof tag === 'string') {
-            return buildChild(elem, tag);
-        } else {
-            elem.appendChild(tag);
-            return elem;
-        }
-    };
-    elem.buildRow = function() { return buildChild(elem, "tr"); };
-    elem.buildForeach = function(iterable, lambda) {
-        for (let i = 0; i < iterable.length; i ++) {
-            let res = lambda(iterable[i], elem);
-            if (res) {
-                if (typeof res === 'string') {
-                    elem.buildHTML(res);
-                } else {
-                    elem.appendChild(res);
-                }
-            }
-        }
-        return elem;
-    };
-    elem.getParent = function() { return makeBuildable(elem.parentNode); };
-    elem.buildSibling = function(tag) { return buildSibling(elem, tag); };
-    elem.buildEventListener = function(event, onevent) { return buildEventListener(elem, event, onevent); };
-    elem.buildOlderSibling = function(tag) { return buildOlderSibling(elem, tag); };
-    return elem;
-}
-
-export function elemBuilder(tag) {
-    let ret = document.createElement(tag);
-    makeBuildable(ret);
-    return ret;
-}
-
-export function getBuildableById(id) { return makeBuildable(document.getElementById(id)); }
-
-function xHttpSetAuth(config, xhttp) {
-    xhttp.setRequestHeader("Authentication-Token", config.authToken);
-}
-
-export function renderModal(modalBodyRender, allowClose = true, modalBaseClass = CLS_MODAL,
-                            modalAdditionalClass = null) {
-    let outerDiv = document.createElement("div");
-    document.body.appendChild(outerDiv);
-    outerDiv.setAttribute("class", CLS_MODAL_OUTER);
-
-    let modalDiv = elemBuilder("div");
-    outerDiv.appendChild(modalDiv);
-    modalDiv.classList.add(modalBaseClass);
-    if (modalAdditionalClass !== null) {
-        modalDiv.classList.add(modalAdditionalClass);
-    }
-
-    if (allowClose) {
-        outerDiv.classList.add(CLS_CURSOR_POINTER);
-        let modalClose = elemBuilder("span").buildClass(CLS_MODAL_CLOSE).buildHTML("&times;");
-        modalDiv.appendChild(modalClose);
-        modalClose.addEventListener("click", function() { document.body.removeChild(outerDiv); });
-        outerDiv.addEventListener("click", function(event) {
-            if (event.target === outerDiv) {
-                document.body.removeChild(outerDiv);
-            }
-        }, false);
-    }
-
-    let subDiv = modalDiv.buildChild("div");
-    subDiv.closeModal = function() { outerDiv.parentElement.removeChild(outerDiv); };
-    modalBodyRender(subDiv);
-}
-
-export function renderModalOk(msg, onOk = null, title = "Success!") {
-    if (!onOk) { onOk = function() {  }; }
-    renderModal(function(modal) {
-        let oldFunc = modal.closeModal;
-        modal.closeModal = function() {
-            oldFunc();
-            onOk();
-        };
-        modal.buildHTML(`
-            <h1>${title}</h1>
-            ${msg}
-        `).buildChild("button").buildText("Ok").buildClass(CLS_BUTTON).buildEventListener("click", function() {
-            modal.closeModal();
+            return result.join('');
         });
-    }, false);
-}
-
-export function renderModalError(errMsg, errTitle = "Error!") {
-
-}
-
-export function renderModalAreYouSure(msg, yesFunc, title = "Are you sure?", yesButtonText = "Yes",
-                                      noButtonText = "No") {
-    renderModal(function(modal) {
-        modal.buildHTML(`
-            <h1>${title}</h1>
-            ${msg}
-        `).buildChild("button").buildText(yesButtonText).buildClass([CLS_BUTTON, CLS_BUTTON_YES]).buildEventListener(
-            "click",
-            function() {
-                modal.closeModal();
-                yesFunc();
-            }
-        ).buildSibling("button").buildText(noButtonText).buildClass([CLS_BUTTON, CLS_BUTTON_NO]).buildEventListener(
-            "click",
-            modal.closeModal);
-    }, false);
-}
-
-function bindButton(eleId, buttonId) {
-    document.getElementById(eleId).addEventListener("keyup", function(event) {
-        if (event.keyCode === 13) {
-            event.preventDefault();
-            document.getElementById(buttonId).click();
+    },
+    genStyleSheetEle: function(href, id) {
+        let link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.type = "text/css";
+        link.href = href;
+        link.id = id;
+        return link;
+    },
+    genFont: function(href, id) {
+        let link = document.createElement("link");
+        link.rel = "stylesheet";
+        link.href = href;
+        link.id = id;
+        return link;
+    },
+    appendIfNoExist: function(parent, toAppend) {
+        if (document.getElementById(toAppend.id) === null) {
+            parent.appendChild(toAppend);
         }
-    });
-}
-
-function setMFAKey(curId, nextId, nextFunc = null) {
-    if (nextFunc === null) {
-        nextFunc = function() { document.getElementById(nextId).focus(); };
-    }
-    document.getElementById(curId).onkeypress = function(event) {
-        if (Number.parseInt(event.key) || Number.parseInt(event.key) === 0) {
-            document.getElementById(curId).value = event.key;
-            nextFunc();
+    },
+    loadStyleSheets: function() {
+        let baseDir;
+        if (document.currentScript) {
+            baseDir = document.currentScript.src.split("/").slice(0, -1).join("/") + "/";
         } else {
-            event.preventDefault();
-        }
-    };
-}
-
-function getLoginData(isMFA) {
-    let ret = {};
-
-    if (isMFA) {
-        ret[KEY_MFA_KEY] = document.getElementById(ID_MFA_0).value + document.getElementById(ID_MFA_1).value +
-            document.getElementById(ID_MFA_2).value + document.getElementById(ID_MFA_3).value +
-            document.getElementById(ID_MFA_4).value + document.getElementById(ID_MFA_5).value;
-        ret[KEY_PRE_AUTH_KEY] = isMFA;
-    } else {
-        ret[KEY_USERNAME] = document.getElementById(ID_USERNAME).value;
-        ret[KEY_PASSWORD] = document.getElementById(ID_PASSWORD).value;
-    }
-
-    return ret;
-}
-
-function handleLoginError(modal, loginErrMsg) {
-    document.getElementById(ID_LOGIN_ERROR).innerHTML = loginErrMsg + "<br>";
-    let inputs = modal.getElementsByClassName(CLS_INPUT);
-
-    for (let inp in inputs) {
-        if (inputs.hasOwnProperty(inp)) {
-            inputs[inp].style.borderColor = "red";
-        }
-    }
-}
-
-function rendererMFALogin(modal, mainLoginDiv, config, callback, preAuthKey) {
-    mainLoginDiv.buildHTML(`
-        <span id=${ID_LOGIN_ERROR} style="color: red"></span>
-        <br>
-        <label class="jeql-strong">
-            2FA
-            <br>
-            <div style="width: 100%; display: flex; gap: 1%">
-                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_0} maxlength="1" size="1">
-                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_1} maxlength="1" size="1">
-                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_2} maxlength="1" size="1">
-                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_3} maxlength="1" size="1">
-                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_4} maxlength="1" size="1">
-                <input class="${CLS_INPUT} ${CLS_INPUT_MFA}" type="text" id=${ID_MFA_5} maxlength="1" size="1">
-            </div>
-        </label>
-    `);
-
-    setMFAKey(ID_MFA_0, ID_MFA_1);
-    setMFAKey(ID_MFA_1, ID_MFA_2);
-    setMFAKey(ID_MFA_2, ID_MFA_3);
-    setMFAKey(ID_MFA_3, ID_MFA_4);
-    setMFAKey(ID_MFA_4, ID_MFA_5);
-    setMFAKey(ID_MFA_5, null, function() {
-        document.getElementById(ID_LOGIN_BUTTON).click()
-    });
-
-    bindButton(ID_MFA_5, ID_LOGIN_BUTTON);
-
-    document.getElementById(ID_LOGIN_BUTTON).addEventListener("click", function() {
-        requests.makeJson(config, ACTION_LOGIN, function(loginErrMsg) {
-            if (loginErrMsg) {
-                handleLoginError(modal, loginErrMsg);
-                document.getElementById(ID_MFA_0).focus();
-                document.getElementById(ID_MFA_0).value = "";
-                document.getElementById(ID_MFA_1).value = "";
-                document.getElementById(ID_MFA_2).value = "";
-                document.getElementById(ID_MFA_3).value = "";
-                document.getElementById(ID_MFA_4).value = "";
-                document.getElementById(ID_MFA_5).value = "";
+            if (window.location.protocol === "file:") {
+                baseDir = "../../../../JEQL/";
             } else {
-                modal.closeModal();
-                callback();
+                baseDir = "/apps/JEQL/";
             }
-        }, getLoginData(preAuthKey));
-    });
-
-    document.getElementById(ID_MFA_0).focus();
-}
-
-export function renderLoginInPage(element, callback) {
-    if (!callback) { callback = function() { }; }
-    element.closeModal = function() { element.innerHTML = ""; }
-    makeBuildable(element);
-    rendererLogin(element, window.JEQL_CONFIG, callback, null);
-}
-
-export function login(data, rememberMe, loginHandleFunc) {
-    let config = window.JEQL_CONFIG;
-
-    config.logout(false);
-    if (rememberMe !== config.rememberMe) {
-        config.setRememberMe(rememberMe);
-    }
-    requests.makeJson(window.JEQL_CONFIG, ACTION_LOGIN, loginHandleFunc, data);
-}
-
-function rendererLogin(modal, config, callback, errMsg) {
-    modal.id = ID_LOGIN_MODAL;
-    modal.appendChild(elemBuilder("div").buildClass(CLS_CENTER).buildHTML(`
-        <h1>
-            Login
-        </h1>
-    `));
-
-    let mainLoginDiv = elemBuilder("div").buildHTML(`
-        <span id=${ID_LOGIN_ERROR} style="color: red"></span>
-        <br>
-        <label class="jeql-strong">
-            Username
-            <input class="${CLS_INPUT} jeql-input-full" type="text" placeholder="Enter username" id=${ID_USERNAME}>
-        </label>
-        <label class="jeql-strong">
-            Password 
-            <input class="${CLS_INPUT} jeql-input-full" type="password" placeholder="Enter password" id=${ID_PASSWORD}>
-        </label>
-    `);
-    modal.appendChild(mainLoginDiv);
-    if (errMsg) {
-        document.getElementById(ID_LOGIN_ERROR).innerHTML = errMsg + "<br>";
-    }
-
-    let rememberMeBox = modal.buildChild("div").buildHTML(`
-        <label for=${ID_REMEMBER_ME}>Remember me</label>
-        <input type="checkbox" id=${ID_REMEMBER_ME}>
-    `);
-    rememberMeBox.checked = config.rememberMe;
-
-    let createLoginButton = function(buttonDiv) {
-        return buttonDiv
-            .buildChild("button")
-            .buildClass(CLS_BUTTON)
-            .buildText("Login")
-            .buildAttr("id", ID_LOGIN_BUTTON);
-    }
-    let buttonDiv = elemBuilder("div");
-    let button = createLoginButton(buttonDiv);
-    modal.appendChild(buttonDiv);
-    button.addEventListener("click", function() {
-        if (document.getElementById(ID_REMEMBER_ME).checked !== config.rememberMe) {
-            config.logout(false, true);
-            config.setRememberMe(document.getElementById(ID_REMEMBER_ME).checked);
         }
-        requests.makeJson(config, ACTION_LOGIN, function(loginErrMsg, mfaNext) {
-            if (mfaNext) {
-                mainLoginDiv.innerHTML = "";
-                rememberMeBox.removeElement();
-                let mfaError = mainLoginDiv.buildChild("span")
-                    .buildAttr("style", "display: none");
-                buttonDiv.innerHTML = "";
-                let backButton = buttonDiv.buildChild("button")
-                    .buildClass(CLS_BUTTON)
-                    .buildText("Back");
-                createLoginButton(buttonDiv);
-                setTimeout(function() {
-                    mfaError.innerText = ERR_MFA_TIMEOUT_OCCURRED;
-                    backButton.click();
-                }, AUTH_MFA_EXPIRY_MS);
-                backButton.addEventListener("click", function() {
-                    modal.closeModal();
-                    let mfaErrMsg = null;
-                    if (mfaError.innerText.length !== 0) {
-                        mfaErrMsg = mfaError.innerText;
-                    }
-                    showLoginModal(config, callback, mfaErrMsg);
-                });
-                rendererMFALogin(modal, mainLoginDiv, config, callback, loginErrMsg);
-            } else if (loginErrMsg) {
-                handleLoginError(modal, loginErrMsg);
-                document.getElementById(ID_USERNAME).focus();
-            } else {
-                modal.closeModal();
-                callback();
+
+        let head = document.getElementsByTagName("head")[0];
+
+        JEQL_UTILS.appendIfNoExist(
+            head,
+            JEQL_UTILS.genFont(
+                "https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap",
+                "jeql__css_font"
+            )
+        );
+
+        JEQL_UTILS.appendIfNoExist(head, JEQL_UTILS.genStyleSheetEle(baseDir + "JEQL.css", "jeql__css_main"));
+        JEQL_UTILS.appendIfNoExist(head, JEQL_UTILS.genStyleSheetEle(baseDir + "spinner/spinner.css", "jeql__css_spinner"));
+    },
+    createSpinner: function() {
+        let spinner = document.createElement("div");
+        spinner.setAttribute("class", "jeql__spinner_outer");
+        let subSpinner = document.createElement("div");
+        subSpinner.setAttribute("class", "jeql__spinner");
+        spinner.appendChild(subSpinner);
+        document.body.appendChild(spinner);
+    },
+    destroySpinner: function() {
+        document.body.removeChild(document.getElementsByClassName("jeql__spinner_outer")[0]);
+    }
+}
+
+JEQL_UTILS.loadStyleSheets();
+
+let JEQL_REQUESTS = {
+    ERR_UNEXPECTED_CRED_CHALLENGE: "Unexpected credential challenge for request type simple",
+    HTTP_STATUS_DEFAULT: "DEFAULT",
+    HTTP_STATUS_OK: 200,
+    HTTP_STATUS_ACCEPTED: 202,
+    HTTP_STATUS_BAD_REQUEST: 400,
+    HTTP_STATUS_UNAUTHORIZED: 401,
+    HTTP_STATUS_TOO_EARLY: 425,
+    ANY_STATUS: "ANY_STATUS",
+    ANY_STATUS_EXCEPT_5xx: "ANY_STATUS_EXCEPT_5xx",
+    ANY_STATUS_EXCEPT_5xx_OR_400: "ANY_STATUS_EXCEPT_5xx_OR_400",
+    ERR_NO_RESPONSE_HANDLER: JEQL_UTILS.template`No response handler found for HTTP response with code ${'code'}`,
+    RequestHelper: class {
+        constructor(base, authAction, refreshAction, loginFunc, refreshFunc, setXHttpAuth,
+                    submitActions, usernameField, authTokenSetFunc = null, logoutFunc = null, createSpinner = JEQL_UTILS.createSpinner,
+                    destroySpinner = JEQL_UTILS.destroySpinner) {
+            this.base = base;
+            this.authLocked = true;
+            this.authQueue = [];
+            this.username = null;
+            this.authAction = authAction;
+            this.refreshAction = refreshAction;
+            this.loginFunc = loginFunc;
+            this.refreshFunc = refreshFunc;
+            this.authToken = null;
+            this.usernameField = usernameField;
+            this.createSpinner = createSpinner;
+            this.destroySpinner = destroySpinner;
+            this.authTokenSetFunc = authTokenSetFunc;
+            if (!this.authTokenSetFunc) { this.authTokenSetFunc = function() {  } }
+            this.setXHttpAuth = setXHttpAuth;
+            this.rememberMe = true;
+            this.logoutFunc = logoutFunc;
+            if (!this.logoutFunc) { this.logoutFunc = function() {  } }
+            this.parent = null;
+	    	this.submitActions = submitActions;
+            this.credentials = null;
+        }
+
+        setCredentials(credentials) { this.credentials = credentials; }
+
+        setRememberMe(isRememberMe) {
+            this.rememberMe = isRememberMe;
+            if (this.parent) {
+                parent.rememberMe = isRememberMe;
             }
-        }, getLoginData());
-    });
-    bindButton(ID_USERNAME, ID_LOGIN_BUTTON);
-    bindButton(ID_PASSWORD, ID_LOGIN_BUTTON);
-    document.getElementById(ID_USERNAME).focus();
-}
-
-function showLoginModal(config, callback, errMsg) {
-    if (config.credentials) {
-        requests.makeJson(config, ACTION_LOGIN, callback, config.credentials);
-    } else {
-        renderModal(
-            function(modal) { rendererLogin(modal, config, callback, errMsg); },
-            false);
-    }
-}
-
-function onRefreshToken(config, callback) {
-    requests.makeEmpty(config, config.refreshAction, callback);
-}
-
-export function formatAsTableHeader(inStr) {
-    let formatted = "";
-    let lastChar = "_";
-    for (let i = 0; i < inStr.length; i ++) {
-        let char = inStr[i];
-        formatted += lastChar === "_" ? char.toUpperCase() : char;
-        lastChar = char;
-    }
-    return formatted.replace("_", " ");
-}
-
-export function findGetParameter(parameterName) {
-    let result = null, tmp = [];
-    location.search
-        .substring(1)
-        .split("&")
-        .forEach(function (item) {
-            tmp = item.split("=");
-            if (tmp[0] === parameterName) { result = decodeURIComponent(tmp[1]); }
-        });
-    return result;
-}
-
-function getJaaqlUrl() {
-    let jaaqlUrl = findGetParameter(PARAMETER_JAAQL);
-    if (jaaqlUrl !== null) { return jaaqlUrl; }
-
-    let callLoc;
-    if (window.location.protocol === PROTOCOL_FILE) {
-        callLoc = LOCAL_DEBUGGING_URL;
-    } else {
-        callLoc = window.location.origin + "/api"
-    }
-
-    return callLoc;
-}
-
-function decodeJWT(jwt) {
-    let asBase64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    let json = decodeURIComponent(atob(asBase64).split('').map(function(char) {
-        return '%' + ('00' + char.charCodeAt(0).toString(16)).slice(-2);
-    }).join(''));
-
-    return JSON.parse(json);
-}
-
-function getJsonArrayFromStorage(storage, storageKey) {
-    let storageObj = storage.getItem(storageKey);
-    if (!storageObj) {
-        storageObj = {};
-        storage.setItem(storageKey, JSON.stringify(storageObj));
-    } else {
-        storageObj = JSON.parse(storageObj);
-    }
-    return storageObj;
-}
-
-function getAppConfig(config, allowFromUrl = false) {
-    try {
-        let application = config.getApplicationName();
-        let appConfig = null;
-        if (allowFromUrl) {
-            appConfig = findGetParameter(PARAMETER_CONFIGURATION);
         }
-        let storedAppConfigs = getJsonArrayFromStorage(config.getStorage(), STORAGE_JAAQL_CONFIGS);
 
-        if (appConfig === null) {
-            let appConfigsForConfig = {};
-            if (config.base in storedAppConfigs) {
-                appConfigsForConfig = storedAppConfigs[config.base];
-            } else {
-                storedAppConfigs[config.base] = appConfigsForConfig;
+        clone() {
+            let ret = new RequestHelper(this.base, this.authAction, this.refreshAction, this.loginFunc, this.refreshFunc, this.setXHttpAuth,
+                this.submitActions, this.usernameField, this.authTokenSetFunc, this.logoutFunc, this.createSpinner, this.destroySpinner);
+            ret.rememberMe = this.rememberMe;
+            ret.parent = this;
+            ret.authLocked = false;
+            ret.authToken = this.authToken;
+            ret.setCredentials(this.credentials);
+            return ret;
+        }
+
+        getStorage() { return this.rememberMe ? window.localStorage : window.sessionStorage; }
+        getInvertedStorage() { return this.rememberMe ? window.sessionStorage : window.localStorage; }
+
+        logout(doReload = true, configOnly = false) {
+            this.credentials = null;
+            this.username = null;
+            if (configOnly) { return; }
+            this.resetAuthToken();
+
+            this.logoutFunc(this.getStorage());
+            this.logoutFunc(this.getInvertedStorage());
+            if (this.parent) {
+                this.parent.logout(doReload, true);
+            }
+            if (doReload) {
+                window.location.reload();
+            }
+        }
+
+        resetAuthToken() {
+            this.authToken = null;
+            this.authTokenSetFunc(this.getStorage(), this.authToken);
+
+            if (this.parent) {
+                this.parent.resetAuthToken();
+            }
+        }
+
+        releaseQueues() {
+            this.authLocked = false;
+            while (this.authQueue.length !== 0) {
+                this.authQueue.pop()();
+            }
+            if (this.parent) {
+                this.parent.releaseQueues();
+            }
+        }
+
+        setAuthToken(authToken, username) {
+            let didReset = false;
+
+            if (this.username && this.username !== username && username) {
+                this.logout(false);
+                this.username = username;
+                didReset = true;
             }
 
-            if (application in appConfigsForConfig) {
-                appConfig = appConfigsForConfig[application];
-            } else {
-                appConfigsForConfig[application] = appConfig;
+            this.authToken = authToken;
+            this.authTokenSetFunc(this.getStorage(), this.authToken);
+
+            if (this.parent) {
+                this.parent.setAuthToken(authToken, username);
+            }
+
+            return didReset;
+        }
+    },
+    jsonToUrlEncoded: function(element, key, list){
+        list = list || [];
+        if(typeof(element) == 'object') {
+            for (let idx in element) {
+                JEQL_REQUESTS.jsonToUrlEncoded(element[idx], key ? key + '[' + idx + ']' : idx, list);
             }
         } else {
-            appConfig = appConfig.split(",");  //Stored as multiple JWTs, comma separated
-            let configName = appConfig.shift();
-
-            let configMap = (token) => ({[decodeJWT(token)[JWT_KEY_CONFIG_NAME]]: token});
-            configMap = Object.assign({}, ...appConfig.map(configMap));
-            appConfig = {};
-            appConfig[KEY_NAME] = configName;
-            appConfig[KEY_CONNECTIONS] = configMap;
-
-            let appConfigsForConfig = {};
-            if (config.base in storedAppConfigs) {
-                appConfigsForConfig = storedAppConfigs[config.base];
-            } else {
-                storedAppConfigs[config.base] = appConfigsForConfig;
-            }
-
-            appConfigsForConfig[application] = appConfig;
+            list.push(key + '=' + encodeURIComponent(element));
         }
-        config.getStorage().setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(storedAppConfigs));
-
-        return appConfig;
-    } catch (err) {
-        // Something has gone wrong
-        console.error(ERR_WIPING_CONFIG);
-        console.error(err);
-        console.getStorage().removeItem(STORAGE_JAAQL_CONFIGS);
-    }
-}
-
-function selectAppConfig(config, callback, chosenConfig) {
-    let callData = {};
-    callData[KEY_APPLICATION] = config.getApplicationName();
-    callData[KEY_CONFIGURATION] = chosenConfig;
-
-    let updateStoredAppConfigs = function(config, callback, chosenConfig, connections) {
-        let connectionLookup = {};
-        for (let idx in connections) {
-            connectionLookup[connections[idx][KEY_DATASET]] = connections[idx][KEY_CONNECTION];
-        }
-
-        let configObj = {};
-        configObj[KEY_CONNECTIONS] = connectionLookup;
-        configObj[KEY_NAME] = chosenConfig;
-        let storedAppConfigs = getJsonArrayFromStorage(config.getStorage(), STORAGE_JAAQL_CONFIGS);
-        storedAppConfigs[config.base][config.getApplicationName()] = configObj;
-        config.getStorage().setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(storedAppConfigs));
-
-        callback(config);
-    };
-
-    requests.makeBody(config, ACTION_CONFIGURATIONS_ASSIGNED_DATABASES,
-        function(connections) { updateStoredAppConfigs(config, callback, chosenConfig, connections); },
-        callData);
-}
-
-function resetAppConfig(config, afterSelectAppConfig = null) {
-    if (afterSelectAppConfig === null) {
-        afterSelectAppConfig = function() {
-            console.error(ERR_IMPERATIVE_APP_CONFIG_FAILED);
-        };
-    }
-
-    let data = {};
-    data[KEY_APPLICATION] = config.getApplicationName();
-    requests.makeBody(config, ACTION_CONFIGURATIONS,
-        function (data) {
-            renderSelectAppConfig(config, afterSelectAppConfig, data);
-        },
-        data);
-}
-
-export function getOrSelectAppConfig(config, afterSelectAppConfig = null, allowFromUrl = false,
-                                     preventRecursion = false) {
-    let newAfterSelectAppConfig = afterSelectAppConfig;
-
-    if (afterSelectAppConfig) {
-        let curScriptParent = scriptParent();
-        let curScript = script();
-        newAfterSelectAppConfig = function (...args) {
-            document.currentScriptParent = curScriptParent;
-            document.theCurrentScript = curScript;
-            config.releaseQueues();
-            afterSelectAppConfig(...args);
-        }
-    }
-
-    let appConfig = getAppConfig(config, allowFromUrl);
-
-    if (appConfig !== null && appConfig.constructor === Object && KEY_CONNECTIONS in appConfig &&
-        KEY_NAME in appConfig && config.authToken !== null) {
-        if (newAfterSelectAppConfig) {
-            newAfterSelectAppConfig(config);
-            return;
+        return list.join('&');
+    },
+    getScriptParentElement: function() {
+        if (document.currentScript) {
+            return document.currentScript.parentElement;
         } else {
-            config.releaseQueues();
-            return appConfig;
+            return null;
         }
-    }
-
-    if (!preventRecursion) {
-        resetAppConfig(config, newAfterSelectAppConfig);
-    }
-
-    let fallback = {};
-    fallback[KEY_CONNECTIONS] = {};
-    fallback[KEY_NAME] = null;
-    return fallback;
-}
-
-function storeJEQLDataToElement(elem, data) {
-    elem.setAttribute(ATTR_JEQL_DATA, btoa(JSON.stringify(data)));
-}
-
-function extractJEQLDataFromElement(elem) {
-    return JSON.parse(atob(elem.getAttribute(ATTR_JEQL_DATA)));
-}
-
-export function scriptParent() {
-    if (document.currentScript) {
-        return document.currentScript.parentElement;
-    } else if (document.hasOwnProperty("currentScriptParent")) {
-        return document.currentScriptParent;
-    } else {
-        return document.currentScript;
-    }
-}
-
-export function script() {
-    if (document.currentScript) {
-        return document.currentScript;
-    } else if (document.hasOwnProperty("theCurrentScript")) {
-        return document.theCurrentScript;
-    } else {
-        return document.currentScript;
-    }
-}
-
-export function prepareQuery(query) {
-    if (query.hasOwnProperty("parameter")) {
-        query[KEY_PARAMETERS] = query["parameter"];
-        delete query.parameter;
-    }
-    if (query.hasOwnProperty("select")) {
-        query["query"] = "SELECT " + query["select"];
-        delete query.select;
-    }
-    return query;
-}
-
-export function scriptPrior() {
-    return script().previousElementSibling;
-}
-
-export function foreach(query, renderer, asObjects = true) {
-    if (query.constructor !== Object) {
-        query = formQuery(window.JEQL_CONFIG, query);
-    }
-    let currentScriptParent = scriptParent();
-    let curScript = script();
-    submit(window.JEQL_CONFIG, query, function(data) {
-        document.currentScriptParent = currentScriptParent;
-        document.theCurrentScript = curScript;
-        for (let i = 0; i <  data[KEY_ROWS].length; i ++) {
-            if (asObjects) {
-                renderer(tupleToObject(data[KEY_ROWS][i], data[KEY_COLUMNS]));
-            } else {
-                renderer(data[KEY_ROWS[i]], data[KEY_COLUMNS]);
-            }
-        }
-    });
-}
-
-export function render(formedQuery, renderFunc, config) {
-    let formedRenderFunc = renderFunc;
-
-    if (renderFunc.constructor === Object) {
-        formedRenderFunc = function(data) {
-            let body = null;
-            let doAlternative = data[KEY_ROWS].length === 0;
-
-            if (doAlternative) {
-                if (JEQL_FIESTA_ALTERNATIVE in renderFunc) {
-                    renderFunc[JEQL_FIESTA_ALTERNATIVE](data[KEY_COLUMNS]);
-                }
-            } else {
-                if (JEQL_FIESTA_INTRODUCER in renderFunc) {
-                    body = renderFunc[JEQL_FIESTA_INTRODUCER](data[KEY_COLUMNS]);
-                }
-                for (let i = 0; i < data[KEY_ROWS].length; i ++) {
-                    if (JEQL_FIESTA_EXPRESSION in renderFunc) {
-                        renderFunc[JEQL_FIESTA_EXPRESSION](data[KEY_ROWS][i], body);
-                    }
-                    if (JEQL_FIESTA_SEPARATOR in renderFunc) {
-                        renderFunc[JEQL_FIESTA_SEPARATOR](data[KEY_ROWS][i], body);
-                    }
-                }
-                if (JEQL_FIESTA_TERMINATOR in renderFunc) {
-                    renderFunc[JEQL_FIESTA_TERMINATOR](data[KEY_COLUMNS], body);
-                }
-            }
-        }
-    }
-
-    if (!config) { config = window.JEQL_CONFIG; }
-
-    submit(window.JEQL_CONFIG, formedQuery, formedRenderFunc);
-}
-
-function renderSelectAppConfig(config, callback, data) {
-    if (data.length === 1) {
-        selectAppConfig(config, callback, data[0][KEY_CONFIGURATION])
-    } else if (data.length === 0) {
-        console.error(ERR_NO_FOUND_CONFIGURATION_FOR_USER);
-    } else {
-        renderModal(function (modal) {
-            let curAppConfig = getOrSelectAppConfig(config, null, false, true)[KEY_NAME];
-
-            modal.appendChild(elemBuilder("h1").buildText("Select Configuration"));
-            let table = elemBuilder("table");
-            modal.appendChild(table);
-            let header = table.buildChild("tr");
-            for (let idx in Object.keys(data[0])) {
-                header.buildChild("th").buildText(formatAsTableHeader(Object.keys(data[0])[idx]));
-            }
-            header.buildChild("th");
-            for (let idx in data) {
-                let row = table.buildChild("tr");
-                if (data[idx][KEY_CONFIGURATION] === curAppConfig) {
-                    row.buildClass(CLS_SELECTED_APP_CONFIG);
-                }
-                for (let key in data[idx]) {
-                    row.buildChild("td").buildText(data[idx][key]);
-                }
-                row.buildChild("td").buildHTML(`
-                    <button id="${ID_SELECT_APP_CONFIG + idx}" class="${CLS_BUTTON}">Select</button>
-                `);
-                storeJEQLDataToElement(document.getElementById(ID_SELECT_APP_CONFIG + idx), data[idx]);
-                document.getElementById(ID_SELECT_APP_CONFIG + idx).addEventListener("click", function (event) {
-                    modal.closeModal();
-                    selectAppConfig(config, callback, extractJEQLDataFromElement(event.target)[KEY_CONFIGURATION]);
-                });
-            }
-        }, false, CLS_MODAL_WIDE);
-    }
-}
-
-function renderAccountBanner(config) {
-    // TODO render something that allows you to select configurations and access the account app
-}
-
-export function fetchMyApplications(config, callback) {
-    requests.makeEmpty(config, ACTION_FETCH_APPLICATIONS, callback);
-}
-
-export function getAppUrl(config, appName) {
-    let data = {};
-    data[KEY_SEARCH] = `%${KEY_APPLICATION} LIKE '%${appName}'`;
-    fetchMyApplications(config,
-        function(data) {
-            data = data[KEY_DATA];
-            for (let idx in data) {
-                if (data[idx][KEY_NAME] === appName) {
-                    return data[idx][KEY_URL];
-                }
-            }
-            throw ERR_COULD_NOT_FIND_APPLICATION_WITH_NAME + `'${appName}'`;
-        }
-    );
-}
-
-function setConnection(config, json) {
-    let dataset = json[KEY_CONNECTION]
-    let appConfig = getOrSelectAppConfig(config)[KEY_CONNECTIONS];
-
-    if (!dataset) {
-        if (Object.keys(appConfig).length > 1) {
-            throw new Error("Must supply dataset as multiple datasets exist");
-        } else if (appConfig.length === 0) {
-            resetAppConfig(config);
-        }
-        json[KEY_CONNECTION] = appConfig[Object.keys(appConfig)[0]];
-    } else {
-        if (dataset in appConfig) {
-            json[KEY_CONNECTION] = appConfig[dataset];
+    },
+    getScript: function() {
+        if (document.currentScript) {
+            return document.currentScript;
         } else {
-            throw new Error("Dataset '" + dataset + " does not exist");
+            return null;
         }
-    }
-}
-
-export function initPublic(application, onLoad, jaaqlUrl = null) {
-    init(application, onLoad, false, jaaqlUrl, false);
-}
-
-export function getOrInitJEQLConfig(application, jaaqlUrl) {
-    if (window.hasOwnProperty("JEQL_CONFIG")) {
-        return window.JEQL_CONFIG;
-    } else {
-        if (jaaqlUrl === null) {
-            jaaqlUrl = getJaaqlUrl();
+    },
+    urlEncodedToJson: function(urlEncoded) {
+        let encodeList = Array.from(urlEncoded.split("&"));
+        let json = {};
+        for (let idx in encodeList) {
+            json[encodeList[idx].split("=")[0]] = decodeURIComponent(encodeList[idx].split("=")[1])
+        }
+        return json;
+    },
+    parseResponse: function(toParse) {
+        if (toParse.getResponseHeader('Content-Type').startsWith("application/json")) {
+            return JSON.parse(toParse.response);
         } else {
-            if (!jaaqlUrl.startsWith("http")) {
-                jaaqlUrl = "https://www." + jaaqlUrl;
-                if (!jaaqlUrl.endsWith("/api")) {
-                    jaaqlUrl += "/api";
-                }
+            return toParse.response;
+        }
+    },
+    getURL: function(method, body, json) {
+        if (method === "GET") {
+            if (body) {
+                return "?" + body;
+            } else if (json) {
+                throw new Error("Please make GET requests passing to the body argument, not json");
             }
         }
-
-        let setAuthTokenFunc = function (storage, authToken) {
-            let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
-            jaaqlTokens[jaaqlUrl] = authToken;
-            storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
-        };
-        let logoutFunc = function (config, storage, wipeComplete) {
-            let jaaqlTokens = getJsonArrayFromStorage(storage, STORAGE_JAAQL_TOKENS);
-            let jaaqlConfigs = getJsonArrayFromStorage(storage, STORAGE_JAAQL_CONFIGS);
-            if (jaaqlTokens && jaaqlUrl in jaaqlTokens) {
-                delete jaaqlTokens[jaaqlUrl];
-            }
-            if (jaaqlConfigs && jaaqlUrl in jaaqlConfigs) {
-                delete jaaqlConfigs[jaaqlUrl];
-            }
-            storage.setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(jaaqlConfigs));
-            storage.setItem(STORAGE_JAAQL_TOKENS, JSON.stringify(jaaqlTokens));
-
-            if (wipeComplete) {
-                storage.removeItem(STORAGE_JAAQL_TOKENS);
-                storage.removeItem(STORAGE_JAAQL_CONFIGS);
-            }
-        };
-        let rememberMeFunc = function (config) {
-            let oldStorage = config.getInvertedStorage();
-            let newStorage = config.getStorage();
-            let oldConfigs = getJsonArrayFromStorage(oldStorage, STORAGE_JAAQL_CONFIGS);
-            let newConfigs = getJsonArrayFromStorage(newStorage, STORAGE_JAAQL_CONFIGS);
-            for (let key in oldConfigs) {
-                if (!(key in newConfigs)) {
-                    newConfigs[key] = {};
-                }
-            }
-            config.getStorage().setItem(STORAGE_JAAQL_CONFIGS, JSON.stringify(newConfigs));
+        return "";
+    },
+    xhttpSendRequest: function(requestHelper, xhttp, method, body, json) {
+        requestHelper.createSpinner();
+        if (body && !json && method !== 'GET') {
+            xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
+            xhttp.send(body);
+        } else if (json && !body && method !== 'GET') {
+            xhttp.setRequestHeader("Content-Type", "application/json; charset=utf-8");
+            xhttp.send(json);
+        } else if (json && body && method !== 'GET') {
+            alert("Tell the developer off! They've provided both json and body data. Naughty");
+        } else {
+            xhttp.send();
         }
-        let config = new requests.RequestConfig(application, jaaqlUrl, ACTION_LOGIN, ACTION_REFRESH, showLoginModal,
-            onRefreshToken, xHttpSetAuth, [ACTION_SUBMIT, ACTION_SUBMIT_FILE], setConnection, KEY_USERNAME, resetAppConfig,
-            rememberMeFunc, setAuthTokenFunc, logoutFunc);
-
-        config.setRememberMe(window.localStorage.getItem(STORAGE_JAAQL_TOKENS) !== null);
-
-        window.JEQL_CONFIG = config;
-
-        return config;
-    }
-}
-
-export function init(application, onLoad, doRenderAccountBanner = true, jaaqlUrl = null,
-                     authenticated = true) {
-    if (!onLoad) { onLoad = function() {  }; }
-
-    let config = getOrInitJEQLConfig(application, jaaqlUrl);
-
-    if (!authenticated) {
-        let body = {};
-        body[KEY_APPLICATION] = application;
-        let credentials = requests.makeSimple(config, ACTION_FETCH_APPLICATION_PUBLIC_USER, null,
-            body, null, false);
-        if (!credentials) {
-            console.error("No public user for application " + application);
+    },
+    getResponseCodeHandler: function(renderFunc, status) {
+        if (!renderFunc) { return null; }
+        if (renderFunc.constructor === Object) {
+            if (renderFunc.hasOwnProperty(status)) {
+                return renderFunc[status];
+            } else {
+                return null;
+            }
+        } else {
+            return status === JEQL_REQUESTS.HTTP_STATUS_OK ? renderFunc : null;
+        }
+    },
+    make: function(requestHelper, action, renderFunc, body, json, ignoreLock = true) {
+        let curScriptParent = JEQL_REQUESTS.getScriptParentElement();
+        let curScript = JEQL_REQUESTS.getScript();
+        if (requestHelper.authLocked && !ignoreLock) {
+            requestHelper.authQueue.push(function() {
+                document.currentScriptParent = curScriptParent;
+                document.theCurrentScript = curScript;
+                JEQL_REQUESTS.make(requestHelper, action, renderFunc, body, json);
+            });
             return
         }
-        config.setCredentials(credentials);
-    }
 
-    let jaaqlTokens = getJsonArrayFromStorage(config.getStorage(), STORAGE_JAAQL_TOKENS);
-    let authToken = null;
-    if (config.base in jaaqlTokens) {
-        authToken = jaaqlTokens[config.base];
-    }
-    config.authToken = authToken;
-    if (authenticated && authenticated !== true) {
-        config.authToken = authenticated;
-    }
+        let resource = action.split(" ")[1];
+        let url = requestHelper.base + resource;
+        let method = action.split(" ")[0];
+        let isOauth = action === requestHelper.authAction;
+        let isRefresh = action === requestHelper.refreshAction;
 
-    if (doRenderAccountBanner) {
-        renderAccountBanner(config);
+        if (requestHelper.authToken === null && !isOauth) {
+            let callback = function() { JEQL_REQUESTS.make(requestHelper, action, renderFunc, body, json); };
+            requestHelper.loginFunc(requestHelper, callback);
+            return
+        }
+
+        let xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            let res = null;
+            let origRenderFunc = null;
+
+            if (this.readyState === 4) {
+                requestHelper.destroySpinner();
+                origRenderFunc = renderFunc;
+                renderFunc = JEQL_REQUESTS.getResponseCodeHandler(renderFunc, this.status);
+                res = JEQL_REQUESTS.parseResponse(this);
+
+                if (this.status === JEQL_REQUESTS.HTTP_STATUS_OK) {
+                    if (isOauth || isRefresh) {
+                        requestHelper.setAuthToken(res);
+                        requestHelper.releaseQueues();
+                        renderFunc();
+                    } else {
+                        renderFunc(res);
+                    }
+                } else if (this.status === JEQL_REQUESTS.HTTP_STATUS_ACCEPTED) {
+                    if (isOauth) {
+                        origRenderFunc(res, true);
+                    }
+                } else if (this.status === JEQL_REQUESTS.HTTP_STATUS_UNAUTHORIZED) {
+                    if (isOauth) {
+                        origRenderFunc("Credentials incorrect. Please try again");
+                    } else if (isRefresh) {
+                        requestHelper.resetAuthToken();
+                        requestHelper.loginFunc(requestHelper, function () { JEQL_REQUESTS.make(requestHelper, action, origRenderFunc, body, json); },
+                            "Credentials expired. Please login again");
+                    } else {
+                        requestHelper.refreshFunc(requestHelper,
+                            function () { JEQL_REQUESTS.make(requestHelper, action, origRenderFunc, body, json); });
+                    }
+                } else {
+                    if (isOauth) {
+                        origRenderFunc("There is an issue with the application. Our automated systems have picked this up and we will look into it asap");
+                        throw new Error(this.response);
+                    } else if (renderFunc !== null) {
+                        renderFunc(res, requestHelper, action, origRenderFunc, body, json);
+                    } else {
+                        if (JEQL_REQUESTS.HTTP_STATUS_DEFAULT in origRenderFunc) {
+                            origRenderFunc[JEQL_REQUESTS.HTTP_STATUS_DEFAULT](res, requestHelper, action, origRenderFunc, body, json);
+                        } else {
+                            console.error("Unexpected response code from server: " + this.status + " response: " + this.response);
+                        }
+                    }
+                }
+            }
+        };
+
+        url += JEQL_REQUESTS.getURL(method, body, json);
+        xhttp.open(method, url, true);
+
+        if (!isOauth) {
+            requestHelper.setXHttpAuth(requestHelper, xhttp);
+        }
+
+        JEQL_REQUESTS.xhttpSendRequest(requestHelper, xhttp, method, body, json);
+    },
+    makeJson: function(requestHelper, action, renderFunc, json) {
+        let isOauth = action === requestHelper.authAction;
+        let isRefresh = action === requestHelper.refreshAction;
+
+    	if (requestHelper.authLocked && !isOauth && !isRefresh) {
+            let curScriptParent = JEQL_REQUESTS.getScriptParentElement();
+            let curScript = JEQL_REQUESTS.getScript();
+            requestHelper.authQueue.push(function() {
+                document.currentScriptParent = curScriptParent;
+                document.theCurrentScript = curScript;
+                JEQL_REQUESTS.makeJson(requestHelper, action, renderFunc, json);
+            });
+            return
+        }
+
+        let username = null;
+
+        if (isOauth) {
+            username = json[requestHelper.usernameField];
+        }
+
+        JEQL_REQUESTS.make(requestHelper, action, renderFunc, undefined, JSON.stringify(json), true, username);
+    },
+    makeBody: function(requestHelper, action, renderFunc, body) {
+    	if (requestHelper.authLocked) {
+            let curScriptParent = JEQL_REQUESTS.getScriptParentElement();
+            let curScript = JEQL_REQUESTS.getScript();
+            requestHelper.authQueue.push(function() {
+                document.currentScriptParent = curScriptParent;
+                document.theCurrentScript = curScript;
+                JEQL_REQUESTS.makeBody(requestHelper, action, renderFunc, body);
+            });
+            return
+        }
+        JEQL_REQUESTS.make(requestHelper, action, renderFunc, JEQL_REQUESTS.jsonToUrlEncoded(body), undefined, true);
+    },
+    makeEmpty: function(requestHelper, action, renderFunc) {
+    	if (requestHelper.authLocked) {
+            let curScriptParent = JEQL_REQUESTS.getScriptParentElement();
+            let curScript = JEQL_REQUESTS.getScript();
+            requestHelper.authQueue.push(function() {
+                document.currentScriptParent = curScriptParent;
+                document.theCurrentScript = curScript;
+                JEQL_REQUESTS.makeEmpty(requestHelper, action, renderFunc);
+            });
+            return
+        }
+        JEQL_REQUESTS.make(requestHelper, action, renderFunc, undefined, undefined, true)
+    },
+    makeSimple: function(requestHelper, action, renderFunc, body, json, async = true) {
+        let resource = action.split(" ")[1];
+        let url = requestHelper.base + resource;
+        let method = action.split(" ")[0];
+
+        if (body) {
+            body = JEQL_REQUESTS.jsonToUrlEncoded(body);
+        }
+        if (json) {
+            json = JSON.stringify(json);
+        }
+
+        if (!renderFunc) {
+            renderFunc = function() {  };
+        }
+
+        let xhttp = new XMLHttpRequest();
+        if (async) {
+            xhttp.onreadystatechange = function () {
+                if (this.readyState === 4) {
+                    requestHelper.destroySpinner();
+                    let origRenderFunc = renderFunc;
+                    if (typeof(renderFunc) === 'object') {
+                        renderFunc = renderFunc[JEQL_REQUESTS.HTTP_STATUS_OK];
+                    }
+                    let is_5xx = this.status.toString()[0] === "5";
+                    if (this.status === JEQL_REQUESTS.HTTP_STATUS_OK) {
+                        renderFunc(JEQL_REQUESTS.parseResponse(this));
+                    } else if (this.status === JEQL_REQUESTS.HTTP_STATUS_UNAUTHORIZED) {
+                        console.log(JEQL_REQUESTS.ERR_UNEXPECTED_CRED_CHALLENGE);
+                    } else if (this.status in origRenderFunc) {
+                        origRenderFunc[this.status](JEQL_REQUESTS.parseResponse(this));
+                    } else if (JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400 in origRenderFunc && !is_5xx &&
+                            this.status !== JEQL_REQUESTS.HTTP_STATUS_BAD_REQUEST) {
+                        origRenderFunc[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400](JEQL_REQUESTS.parseResponse(this));
+                    } else if (JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx in origRenderFunc && !is_5xx) {
+                        origRenderFunc[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx](JEQL_REQUESTS.parseResponse(this));
+                    } else if (JEQL_REQUESTS.ANY_STATUS in origRenderFunc) {
+                        origRenderFunc[JEQL_REQUESTS.ANY_STATUS](JEQL_REQUESTS.parseResponse(this));
+                    } else {
+                        throw JEQL_REQUESTS.ERR_NO_RESPONSE_HANDLER({code: this.status});
+                    }
+                }
+            };
+        }
+
+        url += JEQL_REQUESTS.getURL(method, body, json);
+        xhttp.open(method, url, async);
+
+        JEQL_REQUESTS.xhttpSendRequest(requestHelper, xhttp, method, body, json);
+        if (!async) {
+            requestHelper.destroySpinner();
+            return JEQL_REQUESTS.parseResponse(xhttp);
+        }
     }
-
-    getOrSelectAppConfig(config.clone(), onLoad, true);
-
-    return config;
 }
 
-export function fetchSignupData(token, onFetched) {
-    let data = {};
-    data[KEY_INVITE_KEY] = token;
-    let preOnFetched = function(data) {
-        if (data.hasOwnProperty(KEY_PARAMETERS)) {
-            onFetched(data[KEY_PARAMETERS]);
+let JEQL = {
+    VERSION: "3.0.0",
+    STORAGE_JAAQL_TOKEN: "JAAQL__TOKEN",
+    FIESTA_INTRODUCER: "introducer",
+    FIESTA_EXPRESSION: "expression",
+    FIESTA_SEPARATOR: "separator",
+    FIESTA_TERMINATOR: "terminator",
+    FIESTA_ALTERNATIVE: "alternative",
+    SIGNUP_NOT_STARTED: 0,
+    SIGNUP_STARTED: 1,
+    SIGNUP_ALREADY_REGISTERED: 2,
+    SIGNUP_COMPLETED: 3,
+    ACTION_SIGNUP: "POST /account/signup/request",
+    ACTION_RESET: "POST /account/reset-password",
+    ACTION_SIGNUP_WITH_TOKEN: "POST /account/signup/activate",
+    ACTION_RESET_WITH_TOKEN: "POST /account/reset-password/reset",
+    ACTION_FETCH_SIGNUP: "GET /account/signup/fetch",
+    ACTION_FINISH_SIGNUP: "POST /account/signup/finish",
+    ACTION_SIGNUP_STATUS: "GET /account/signup/status",
+    ACTION_RESET_STATUS: "GET /account/reset-password/status",
+    ACTION_LOGIN: "POST /oauth/token",
+    ACTION_FETCH_APPLICATION_PUBLIC_USER: "GET /applications/public",
+    ACTION_REFRESH: "POST /oauth/refresh",
+    ACTION_SUBMIT: "POST /submit",
+    ACTION_SUBMIT_FILE: "POST /submit-file",
+    ACTION_SEND_EMAIL: "POST /emails",
+    ACTION_REQUEST_RENDERED_DOCUMENT: "POST /documents",
+    ACTION_DOWNLOAD_RENDERED_DOCUMENT: "GET /documents",
+    RESET_NOT_STARTED: 0,
+    RESET_STARTED: 1,
+    RESET_COMPLETED: 2,
+    CLS_MODAL_OUTER: "jeql__modal_outer",
+    CLS_MODAL: "jeql__modal",
+    CLS_MODAL_WIDE: "jeql__modal_wide",
+    CLS_MODAL_WIDEST: "jeql__modal_widest",
+    CLS_MODAL_AUTO: "jeql__modal_auto",
+    CLS_STRONG: "jeql__strong",
+    CLS_INPUT_FULL: "jeql__input_full",
+    CLS_BUTTON: "jeql__button",
+    CLS_BUTTON_YES: "jeql__button_yes",
+    CLS_BUTTON_NO: "jeql__button_no",
+    CLS_MODAL_CLOSE: "jeql__modal_close",
+    CLS_CURSOR_POINTER: "jeql__cursor_pointer",
+    CLS_CENTER: "jeql__center",
+    CLS_INPUT: "jeql__input",
+    PROTOCOL_FILE: "file:",
+    LOCAL_DEBUGGING_URL: "http://127.0.0.1:6060",
+    ARG_INVITE_TOKEN: "invite_token",
+    ARG_RESET_TOKEN: "reset_token",
+    ID_LOGIN_MODAL: "jeql__login_modal",
+    ID_LOGIN_BUTTON: "jeql__login_button",
+    ID_LOGIN_ERROR: "jeql__login_error",
+    ID_TENANT: "jeql__tenant",
+    ID_USERNAME: "jeql__username",
+    ID_PASSWORD: "jeql__password",
+    ID_REMEMBER_ME: "jeql__remember_me",
+    KEY_QUERY: "query",
+    KEY_ROWS: "rows",
+    KEY_COLUMNS: "columns",
+    KEY_EMAIL: "email",
+    KEY_USERNAME: "username",
+    KEY_PASSWORD: "password",
+    KEY_APPLICATION: "application",
+    KEY_TEMPLATE: "template",
+    KEY_EXISTING_USER_TEMPLATE: "existing_user_template",
+    KEY_CONFIGURATION: "configuration",
+    KEY_TENANT: "tenant",
+    KEY_INVITE_OR_POLL_KEY: "invite_or_poll_key",
+    KEY_RESET_OR_POLL_KEY: "reset_or_poll_key",
+    KEY_INVITE_CODE: "invite_code",
+    KEY_RESET_CODE: "reset_code",
+    KEY_INVITE_KEY: "invite_key",
+    KEY_RESET_KEY: "reset_key",
+    KEY_INVITE_KEY_STATUS: "invite_key_status",
+    KEY_RESET_KEY_STATUS: "reset_key_status",
+    KEY_PARAMETERS: "parameters",
+    KEY_DATABASE: "database",
+    KEY_ATTACHMENTS: "attachments",
+    KEY_SCHEMA: "schema",
+    KEY_NAME: "name",
+    KEY_DOCUMENT_ID: "document_id",
+    KEY_AS_ATTACHMENT: "as_attachment",
+    KEY_CREATE_FILE: "create_file",
+    KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE: "default_email_signup_template",
+    KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE: "default_email_already_signed_up_template",
+    KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE: "default_reset_password_template",
+    HEADER_AUTHENTICATION_TOKEN: "Authentication-Token",
+    modalExists: function() {
+        return document.body.getElementsByClassName(JEQL.CLS_MODAL).length !== 0;
+    },
+    buildChild: function(elem, tag) {
+        let child = JEQL.elemBuilder(tag);
+        elem.appendChild(child);
+        return child;
+    },
+    buildClass: function(elem, classOrClasses) {
+        if (!Array.isArray(classOrClasses)) {
+            classOrClasses = [classOrClasses];
+        }
+
+        for (let curClass in classOrClasses) {
+            elem.classList.add(classOrClasses[curClass]);
+        }
+
+        return elem;
+    },
+    buildOlderSibling: function(elem, tag) {
+        let sibling = JEQL.elemBuilder(tag);
+        elem.parentNode.insertBefore(sibling, elem);
+        return sibling;
+    },
+    buildSibling: function(elem, tag) {
+        let sibling = JEQL.elemBuilder(tag);
+        elem.after(sibling);
+        return sibling;
+    },
+    buildAttr: function(elem, attr, value) {
+        elem.setAttribute(attr, value);
+        return elem;
+    },
+    buildText: function(elem, text) {
+        elem.innerText = text;
+        return elem;
+    },
+    buildHTML: function(elem, html) {
+        elem.innerHTML += html;
+        return elem;
+    },
+    tupleToObject: function(row, columns) {
+        let obj = {};
+        for (let i2 = 0; i2 < columns.length; i2 ++) {
+            if (columns[i2].constructor === Object) {
+                let objKey = Object.keys(columns[i2])[0];
+                let subResponse = {};
+                subResponse[JEQL.KEY_COLUMNS] = columns[i2][objKey];
+                subResponse[JEQL.KEY_ROWS] = row[i2];
+                obj[objKey] = JEQL.tuplesToObjects(subResponse);
+            } else {
+                obj[columns[i2]] = row[i2];
+            }
+        }
+        return obj;
+    },
+    tuplesToObjects: function(response) {
+        let columns = response[JEQL.KEY_COLUMNS];
+        let rows = response[JEQL.KEY_ROWS];
+        let ret = [];
+
+        for (let i = 0; i < rows.length; i ++) {
+            ret.push(JEQL.tupleToObject(rows[i], columns));
+        }
+
+        return ret;
+    },
+    objectsToTuples: function(response) {
+        let ret = {};
+        ret[JEQL.KEY_COLUMNS] = [];
+        ret[JEQL.KEY_ROWS] = [];
+        for (let i = 0; i < response.length; i ++) {
+            if (i === 0) {
+                ret[JEQL.KEY_COLUMNS] = Object.keys(response[i]);
+            }
+            let row = [];
+            for (let i2 = 0; i2 < ret[JEQL.KEY_COLUMNS].length; i2 ++) {
+                row.push(response[i][ret[JEQL.KEY_COLUMNS][i2]]);
+            }
+            ret[JEQL.KEY_ROWS].push(row);
+        }
+        return ret;
+    },
+    buildBoolean: function(elem, attr, doBuild) {
+        if (doBuild) {
+            elem.setAttribute(attr, attr);
+        }
+        return elem;
+    },
+    buildEventListener: function(elem, event, onevent) {
+        elem.addEventListener(event, onevent);
+        return elem;
+    },
+    makeBuildable: function(elem) {
+        elem.removeElement = function() { elem.parentNode.removeChild(elem); }
+        elem.buildClass = function(classOrClasses) { return JEQL.buildClass(elem, classOrClasses); };
+        elem.buildAttr = function(attr, value) { return JEQL.buildAttr(elem, attr, value); };
+        elem.buildBoolean = function(attr, doBuild) { return JEQL.buildBoolean(elem, attr, doBuild); };
+        elem.buildText = function(text) { return JEQL.buildText(elem, text); };
+        elem.buildHTML = function(html) { return JEQL.buildHTML(elem, html); };
+        elem.resetHTML = function(html) {
+            elem.innerHTML = "";
+            return JEQL.buildHTML(elem, html);
+        };
+        elem.buildChild = function(tag) {
+            if (typeof tag === 'string') {
+                return JEQL.buildChild(elem, tag);
+            } else {
+                elem.appendChild(tag);
+                return elem;
+            }
+        };
+        elem.buildRow = function() { return JEQL.buildChild(elem, "tr"); };
+        elem.buildForeach = function(iterable, lambda) {
+            for (let i = 0; i < iterable.length; i ++) {
+                let res = lambda(iterable[i], elem);
+                if (res) {
+                    if (typeof res === 'string') {
+                        elem.buildHTML(res);
+                    } else {
+                        elem.appendChild(res);
+                    }
+                }
+            }
+            return elem;
+        };
+        elem.getParent = function() { return JEQL.makeBuildable(elem.parentNode); };
+        elem.buildSibling = function(tag) { return JEQL.buildSibling(elem, tag); };
+        elem.buildEventListener = function(event, on_event) { return JEQL.buildEventListener(elem, event, on_event); };
+        elem.buildClick = function(on_event) { return JEQL.buildEventListener(elem, "click", on_event); }
+        elem.buildOlderSibling = function(tag) { return JEQL.buildOlderSibling(elem, tag); };
+        return elem;
+    },
+    elemBuilder: function(tag) {
+        let ret = document.createElement(tag);
+        JEQL.makeBuildable(ret);
+        return ret;
+    },
+    getBuildableById: function(id) { return JEQL.makeBuildable(document.getElementById(id)); },
+    xHttpSetAuth: function(requestHelper, xhttp) {
+        xhttp.setRequestHeader(JEQL.HEADER_AUTHENTICATION_TOKEN, requestHelper.authToken);
+    },
+    renderModal: function(modalBodyRender, allowClose = true, modalBaseClass = JEQL.CLS_MODAL, modalAdditionalClass = null) {
+        let outerDiv = document.createElement("div");
+        document.body.appendChild(outerDiv);
+        outerDiv.setAttribute("class", JEQL.CLS_MODAL_OUTER);
+
+        let modalDiv = JEQL.elemBuilder("div");
+        outerDiv.appendChild(modalDiv);
+        modalDiv.classList.add(modalBaseClass);
+        if (modalAdditionalClass !== null) {
+            modalDiv.classList.add(modalAdditionalClass);
+        }
+
+        if (allowClose) {
+            outerDiv.classList.add(JEQL.CLS_CURSOR_POINTER);
+            let modalClose = JEQL.elemBuilder("span").buildClass(JEQL.CLS_MODAL_CLOSE).buildHTML("&times;");
+            modalDiv.appendChild(modalClose);
+            modalClose.addEventListener("click", function() { document.body.removeChild(outerDiv); });
+            outerDiv.addEventListener("click", function(event) {
+                if (event.target === outerDiv) {
+                    document.body.removeChild(outerDiv);
+                }
+            }, false);
+        }
+
+        let subDiv = modalDiv.buildChild("div");
+        subDiv.closeModal = function() { outerDiv.parentElement.removeChild(outerDiv); };
+        modalBodyRender(subDiv);
+    },
+    renderModalOk: function(msg, onOk = null, title = "Success!") {
+        if (!onOk) { onOk = function() {  }; }
+        JEQL.renderModal(function(modal) {
+            let oldFunc = modal.closeModal;
+            modal.closeModal = function() {
+                oldFunc();
+                onOk();
+            };
+            modal.buildHTML(`
+                <h1>${title}</h1>
+                ${msg}
+            `).buildChild("button").buildText("Ok").buildClass(JEQL.CLS_BUTTON).buildClick(function() {
+                modal.closeModal();
+            });
+        }, true);
+    },
+    renderModalError: function(errMsg, errTitle = "Error!") {
+        JEQL.renderModal(function(modal) {
+            modal.buildHTML(`
+                <h1>${errTitle}</h1>
+                ${errMsg}
+            `).buildChild("button").buildText("Ok").buildClass([JEQL.CLS_BUTTON, JEQL.CLS_BUTTON_NO]).buildClick(modal.closeModal);
+        }, true);
+    },
+    renderModalAreYouSure: function(msg, yesFunc, title = "Are you sure?", yesButtonText = "Yes", noButtonText = "No") {
+        JEQL.renderModal(function(modal) {
+            modal.buildHTML(`
+                <h1>${title}</h1>
+                ${msg}
+            `).buildChild("button").buildText(yesButtonText).buildClass([JEQL.CLS_BUTTON, JEQL.CLS_BUTTON_YES]).buildClick(
+                function() {
+                    modal.closeModal();
+                    yesFunc();
+                }
+            ).buildSibling("button").buildText(noButtonText).buildClass([JEQL.CLS_BUTTON, JEQL.CLS_BUTTON_NO]).buildClick(modal.closeModal);
+        }, true);
+    },
+    bindButton: function(eleId, buttonId) {
+        document.getElementById(eleId).addEventListener("keyup", function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                document.getElementById(buttonId).click();
+            }
+        });
+    },
+    getLoginData: function() {
+        let ret = {};
+        ret[JEQL.KEY_USERNAME] = document.getElementById(JEQL.ID_USERNAME).value;
+        ret[JEQL.KEY_PASSWORD] = document.getElementById(JEQL.ID_PASSWORD).value;
+        ret[JEQL.KEY_TENANT] = document.getElementById(JEQL.ID_TENANT) ? document.getElementById(JEQL.ID_TENANT).value : window.JEQL__TENANT;
+        return ret;
+    },
+    handleLoginError: function(modal, loginErrMsg) {
+        document.getElementById(JEQL.ID_LOGIN_ERROR).innerHTML = loginErrMsg + "<br>";
+        let inputs = modal.getElementsByClassName(JEQL.CLS_INPUT);
+
+        for (let inp in inputs) {
+            if (inputs.hasOwnProperty(inp)) {
+                inputs[inp].style.borderColor = "red";
+            }
+        }
+    },
+    renderLoginInPage: function(element, callback) {
+        if (!callback) { callback = function() { }; }
+        element.closeModal = function() { element.innerHTML = ""; }
+        JEQL.makeBuildable(element);
+        JEQL.rendererLogin(element, window.JEQL__REQUEST_HELPER, callback, null);
+    },
+    login(data, rememberMe, loginHandleFunc) {
+        let requestHelper = window.JEQL__REQUEST_HELPER;
+
+        requestHelper.logout(false);
+        if (rememberMe !== requestHelper.rememberMe) {
+            requestHelper.setRememberMe(rememberMe);
+        }
+        JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, loginHandleFunc, data);
+    },
+    rendererLogin(modal, requestHelper, callback, errMsg) {
+        modal.id = JEQL.ID_LOGIN_MODAL;
+        modal.appendChild(JEQL.elemBuilder("div").buildClass(JEQL.CLS_CENTER).buildHTML(`
+            <h1>
+                Login
+            </h1>
+        `));
+
+        let mainLoginDiv = JEQL.elemBuilder("div").buildHTML(`
+            <span id=${JEQL.ID_LOGIN_ERROR} style="color: red"></span>
+            <br>
+        `);
+
+        if (!window.JEQL__TENANT) {
+            mainLoginDiv.buildHTML(`
+                <label class="${JEQL.CLS_STRONG}">
+                    Tenant
+                    <input class="${JEQL.CLS_INPUT} ${JEQL.CLS_INPUT_FULL}" type="text" placeholder="Enter tenant" id=${JEQL.ID_TENANT}>
+                </label>
+            `);
+        }
+
+        mainLoginDiv.buildHTML(`
+            <label class="${JEQL.CLS_STRONG}">
+                Username
+                <input class="${JEQL.CLS_INPUT} ${JEQL.CLS_INPUT_FULL}" type="text" placeholder="Enter username" id=${JEQL.ID_USERNAME}>
+            </label>
+            <label class="${JEQL.CLS_STRONG}">
+                Password 
+                <input class="${JEQL.CLS_INPUT} ${JEQL.CLS_INPUT_FULL}" type="password" placeholder="Enter password" id=${JEQL.ID_PASSWORD}>
+            </label>
+        `);
+        modal.appendChild(mainLoginDiv);
+        if (errMsg) {
+            document.getElementById(JEQL.ID_LOGIN_ERROR).innerHTML = errMsg + "<br>";
+        }
+
+        let rememberMeBox = modal.buildChild("div").buildHTML(`
+            <label for=${JEQL.ID_REMEMBER_ME}>Remember me</label>
+            <input type="checkbox" id=${JEQL.ID_REMEMBER_ME}>
+        `);
+        rememberMeBox.checked = requestHelper.rememberMe;
+
+        let createLoginButton = function(buttonDiv) {
+            return buttonDiv
+                .buildChild("button")
+                .buildClass(JEQL.CLS_BUTTON)
+                .buildText("Login")
+                .buildAttr("id", JEQL.ID_LOGIN_BUTTON);
+        }
+        let buttonDiv = JEQL.elemBuilder("div");
+        let button = createLoginButton(buttonDiv);
+        modal.appendChild(buttonDiv);
+        button.addEventListener("click", function() {
+            if (document.getElementById(JEQL.ID_TENANT)) {
+                window.JEQL__TENANT = document.getElementById(JEQL.ID_TENANT).value;
+            }
+            if (document.getElementById(JEQL.ID_REMEMBER_ME).checked !== requestHelper.rememberMe) {
+                requestHelper.logout(false, true);
+                requestHelper.setRememberMe(document.getElementById(JEQL.ID_REMEMBER_ME).checked);
+            }
+            JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, function(loginErrMsg) {
+                if (loginErrMsg) {
+                    JEQL.handleLoginError(modal, loginErrMsg);
+                    if (document.getElementById(JEQL.ID_TENANT)) {
+                        document.getElementById(JEQL.ID_TENANT).focus();
+                    } else {
+                        document.getElementById(JEQL.ID_USERNAME).focus();
+                    }
+                } else {
+                    modal.closeModal();
+                    callback();
+                }
+            }, JEQL.getLoginData());
+        });
+        JEQL.bindButton(JEQL.ID_USERNAME, JEQL.ID_LOGIN_BUTTON);
+        JEQL.bindButton(JEQL.ID_PASSWORD, JEQL.ID_LOGIN_BUTTON);
+        if (document.getElementById(JEQL.ID_TENANT)) {
+            document.getElementById(JEQL.ID_TENANT).focus();
         } else {
-            onFetched({});
+            document.getElementById(JEQL.ID_USERNAME).focus();
         }
-    }
-    requests.makeBody(window.JEQL_CONFIG, ACTION_FETCH_SIGNUP, preOnFetched, data);
-}
-
-export function finishSignup(token, onFinished) {
-    let data = {};
-    data[KEY_INVITE_KEY] = token;
-    if (!onFinished) {
-        onFinished = function() {  };
-    }
-    requests.makeJson(window.JEQL_CONFIG, ACTION_FINISH_SIGNUP, onFinished, data);
-}
-
-function documentRenderAndDownloadInternal(create_file, name, parameters, callback, asAttachment) {
-    let data = {};
-    data[KEY_NAME] = name;
-    data[KEY_PARAMETERS] = parameters;
-    data[KEY_CREATE_FILE] = create_file;
-
-    let onRespFunc = function(res) {
-        if (asAttachment) {
-            res[KEY_AS_ATTACHMENT] = asAttachment;
+    },
+    showLoginModal: function(requestHelper, callback, errMsg) {
+        if (requestHelper.credentials) {
+            JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, callback, requestHelper.credentials);
+        } else {
+            JEQL.renderModal(function(modal) { JEQL.rendererLogin(modal, requestHelper, callback, errMsg); }, false);
         }
-        let pollFunc = {
-            200: function(subRes) {
+    },
+    onRefreshToken: function(requestHelper, callback) {
+        JEQL_REQUESTS.makeEmpty(requestHelper, requestHelper.refreshAction, callback);
+    },
+    findGetParameter: function(parameterName) {
+        let result = null, tmp = [];
+        location.search
+            .substring(1)
+            .split("&")
+            .forEach(function (item) {
+                tmp = item.split("=");
+                if (tmp[0] === parameterName) { result = decodeURIComponent(tmp[1]); }
+            });
+        return result;
+    },
+    getJaaqlUrl() {
+        let callLoc;
+        if (window.location.protocol === JEQL.PROTOCOL_FILE) {
+            callLoc = JEQL.LOCAL_DEBUGGING_URL;
+        } else {
+            callLoc = window.location.origin + "/api"
+        }
+
+        return callLoc;
+    },
+    decodeJWT: function(jwt) {
+        let asBase64 = jwt.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        let json = decodeURIComponent(atob(asBase64).split('').map(function(char) {
+            return '%' + ('00' + char.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''));
+
+        return JSON.parse(json);
+    },
+    getJsonArrayFromStorage: function(storage, storageKey) {
+        let storageObj = storage.getItem(storageKey);
+        if (!storageObj) {
+            storageObj = {};
+            storage.setItem(storageKey, JSON.stringify(storageObj));
+        } else {
+            storageObj = JSON.parse(storageObj);
+        }
+        return storageObj;
+    },
+    render: function(formedQuery, renderFunc) {
+        let formedRenderFunc = renderFunc;
+
+        if (renderFunc.constructor === Object) {
+            formedRenderFunc = function(data) {
+                let body = null;
+                let doAlternative = data[JEQL.KEY_ROWS].length === 0;
+
+                if (doAlternative) {
+                    if (JEQL.FIESTA_ALTERNATIVE in renderFunc) {
+                        renderFunc[JEQL.FIESTA_ALTERNATIVE](data[JEQL.KEY_COLUMNS]);
+                    }
+                } else {
+                    if (JEQL.FIESTA_INTRODUCER in renderFunc) {
+                        body = renderFunc[JEQL.FIESTA_INTRODUCER](data[JEQL.KEY_COLUMNS]);
+                    }
+                    for (let i = 0; i < data[JEQL.KEY_ROWS].length; i ++) {
+                        if (JEQL.FIESTA_EXPRESSION in renderFunc) {
+                            renderFunc[JEQL.FIESTA_EXPRESSION](data[JEQL.KEY_ROWS][i], body);
+                        }
+                        if (JEQL.FIESTA_SEPARATOR in renderFunc) {
+                            renderFunc[JEQL.FIESTA_SEPARATOR](data[JEQL.KEY_ROWS][i], body);
+                        }
+                    }
+                    if (JEQL.FIESTA_TERMINATOR in renderFunc) {
+                        renderFunc[JEQL.FIESTA_TERMINATOR](data[JEQL.KEY_COLUMNS], body);
+                    }
+                }
+            }
+        }
+
+        JEQL.submit(formedQuery, formedRenderFunc);
+    },
+    renderAccountBanner: function (requestHelper) {  },  // TODO at some point
+    fetchSignupData: function(token, onFetched) {
+        let data = {};
+        data[JEQL.KEY_INVITE_KEY] = token;
+        let preOnFetched = function(data) {
+            if (data.hasOwnProperty(JEQL.KEY_PARAMETERS)) {
+                onFetched(data[JEQL.KEY_PARAMETERS]);
+            } else {
+                onFetched({});
+            }
+        }
+        JEQL_REQUESTS.makeBody(window.JEQL__REQUEST_HELPER, JEQL.ACTION_FETCH_SIGNUP, preOnFetched, data);
+    },
+    finishSignup(token, onFinished) {
+        let data = {};
+        data[JEQL.KEY_INVITE_KEY] = token;
+        if (!onFinished) {
+            onFinished = function() {  };
+        }
+        JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_FINISH_SIGNUP, onFinished, data);
+    },
+    _renderDocument(create_file, name, parameters, callback, asAttachment) {
+        let data = {};
+        data[JEQL.KEY_NAME] = name;
+        data[JEQL.KEY_PARAMETERS] = parameters;
+        data[JEQL.KEY_CREATE_FILE] = create_file;
+
+        let onRespFunc = function(res) {
+            if (asAttachment) {
+                res[JEQL.KEY_AS_ATTACHMENT] = asAttachment;
+            }
+            let pollFunc = {};
+            pollFunc[JEQL_REQUESTS.HTTP_STATUS_OK] = function(subRes) {
                 if (callback) {
                     callback(subRes);
                 } else {
@@ -1457,327 +994,342 @@ function documentRenderAndDownloadInternal(create_file, name, parameters, callba
                     link.click();
                     document.body.removeChild(link);
                 }
-            },
-            425: function() {
+            };
+            pollFunc[JEQL_REQUESTS.HTTP_STATUS_TOO_EARLY] = function() {
                 setTimeout(function() { onRespFunc(res); }, 125);
-            }
+            };
+            JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_DOWNLOAD_RENDERED_DOCUMENT, pollFunc, res);
         };
-        requests.makeJson(window.JEQL_CONFIG, ACTION_DOWNLOAD_RENDERED_DOCUMENT, pollFunc, res);
-    }
 
-    requests.makeJson(window.JEQL_CONFIG, ACTION_REQUEST_RENDERED_DOCUMENT, onRespFunc, data);
-}
-
-export function renderDocumentAndDownload(name, parameters, callback, asAttachment) {
-    documentRenderAndDownloadInternal(true, name, parameters, callback, asAttachment);
-}
-
-export function renderDocumentAndFetchUrl(name, parameters, callback) {
-    documentRenderAndDownloadInternal(false, name, parameters, callback);
-}
-
-export function resetPassword(data, onreset, errFunc) {
-    if (!onreset) {
-        onreset = function() {  };
-    }
-    if (!errFunc) {
-        errFunc = function() { throw `Could not signup!`; };
-    }
-
-    if (typeof(onreset) !== "function") {
-        let onresetStr = onreset;
-        onreset = function(token) {
-            let connector = onresetStr.includes("?") ? "&" : "?";
-            window.location.assign(onresetStr + connector + encodeURIComponent(ARG_RESET_TOKEN) + "=" + encodeURIComponent(token));
+        JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_REQUEST_RENDERED_DOCUMENT, onRespFunc, data);
+    },
+    renderDocumentAndDownload: function(name, parameters, callback, asAttachment) {
+        JEQL._renderDocument(true, name, parameters, callback, asAttachment);
+    },
+    renderDocumentAndFetchUrl: function(name, parameters, callback) {
+        JEQL._renderDocument(false, name, parameters, callback);
+    },
+    convertCallbackToObjects: function(callback) {
+        return function(data) {
+            callback(JEQL.tuplesToObjects(data));
         }
-    }
-    data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
-
-    let resetFunc = function(ret) { onreset(ret[KEY_RESET_KEY]); };
-    let resetDict = {};
-    resetDict[200] = resetFunc;
-    resetDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
-
-    if (!data.hasOwnProperty(data[KEY_TEMPLATE])) {
-        let getTemplateData = {};
-        getTemplateData[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
-
-        requests.makeSimple(window.JEQL_CONFIG, ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES, function(templates) {
-            data[KEY_TEMPLATE] = templates[KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE];
-            requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetDict, null, data);
-        }, getTemplateData);
-    } else {
-        requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET, resetDict, null, data);
-    }
-}
-
-export function sendEmail(template, parameters, attachments, onSuccess, onError) {
-    let data = {};
-    data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
-    data[KEY_PARAMETERS] = parameters;
-    data[KEY_ATTACHMENTS] = attachments;
-    data[KEY_TEMPLATE] = template;
-
-    let resDict = {};
-    resDict[200] = onSuccess;
-    resDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
-    requests.makeJson(window.JEQL_CONFIG, ACTION_SEND_EMAIL, resDict, data);
-}
-
-export function signup(data, onsignup, errFunc) {
-    if (!onsignup) {
-        onsignup = function() {  };
-    }
-    if (!errFunc) {
-        errFunc = function() { throw `Could not signup!`; };
-    }
-    if (typeof(onsignup) !== "function") {
-        let onsignupStr = onsignup;
-        onsignup = function(token) {
-            let connector = onsignupStr.includes("?") ? "&" : "?";
-            window.location.assign(onsignupStr + connector + encodeURIComponent(ARG_INVITE_TOKEN) + "=" + encodeURIComponent(token));
+    },
+    convertCallbackToObject: function(callback) {
+        return function(data) {
+            callback(JEQL.tupleToObject(data[JEQL.KEY_ROWS], data[JEQL.KEY_COLUMNS]));
         }
-    }
-    data[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
-
-    let signupFunc = function(ret) { onsignup(ret[KEY_INVITE_KEY]); };
-    let signupDict = {};
-    signupDict[200] = signupFunc;
-    signupDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
-
-    if (!data.hasOwnProperty(data[KEY_TEMPLATE])) {
-        let getTemplateData = {};
-        getTemplateData[KEY_APPLICATION] = window.JEQL_CONFIG.applicationName;
-
-        requests.makeSimple(window.JEQL_CONFIG, ACTION_FETCH_APPLICATION_DEFAULT_EMAIL_TEMPLATES, function(templates) {
-            data[KEY_TEMPLATE] = templates[KEY_TEMPLATE];
-            data[KEY_EXISTING_USER_TEMPLATE] = templates[KEY_EXISTING_USER_TEMPLATE];
-            requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupDict, null, data);
-        }, getTemplateData);
-    } else {
-        requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP, signupDict, null, data);
-    }
-}
-
-export function signupWithToken(token, password, handleFunc) {
-    let data = {};
-    data[KEY_INVITE_KEY] = token;
-    data[KEY_PASSWORD] = password;
-
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_WITH_TOKEN, handleFunc, null, data);
-}
-
-export function signupWithTokenAndLogin(token, password, handleFunc, rememberMe, onError) {
-    if (typeof(handleFunc) !== "function") {
-        let handleFuncStr = handleFunc;
-        handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
-    }
-    let postHandleFunc = function() {
-        fetchSignupData(token, handleFunc);
-    }
-    let preHandleFunc = function(res) {
-        if (rememberMe !== null && rememberMe !== undefined) {
-            window.JEQL_CONFIG.setRememberMe(rememberMe);
+    },
+    fetchDefaultTemplates(callback) {
+        let query = {};
+        query[JEQL.KEY_QUERY] = "SELECT * FROM my_application_configurations WHERE application = :application AND configuration = :configuration";
+        let parameters = {};
+        parameters[JEQL.KEY_APPLICATION] = window.JEQL__APP;
+        parameters[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
+        query[JEQL.KEY_PARAMETERS] = parameters;
+        JEQL.submit(query, JEQL.convertCallbackToObject(callback));
+    },
+    resetPassword(data, onreset, errFunc) {
+        if (!onreset) {
+            onreset = function() {  };
         }
-        let creds = {};
-        creds[KEY_USERNAME] = res[KEY_EMAIL];
-        creds[KEY_PASSWORD] = password;
-        window.JEQL_CONFIG.setCredentials(creds);
-        window.JEQL_CONFIG.authLocked = false;
-        getOrSelectAppConfig(window.JEQL_CONFIG, postHandleFunc, true);
-    }
-    let preHandleDict = {};
-    preHandleDict[200] = preHandleFunc;
-    if (onError) {
-        preHandleDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
-    }
-    signupWithToken(token, password, preHandleDict);
-}
-
-export function resetWithToken(token, password, handleFunc) {
-    let data = {};
-    data[KEY_RESET_KEY] = token;
-    data[KEY_PASSWORD] = password;
-
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET_WITH_TOKEN, handleFunc, null, data);
-}
-
-export function resetWithTokenAndLogin(token, password, handleFunc, rememberMe, onError) {
-    if (typeof(handleFunc) !== "function") {
-        let handleFuncStr = handleFunc;
-        handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
-    }
-    let preHandleFunc = function(res) {
-        if (rememberMe !== null && rememberMe !== undefined) {
-            window.JEQL_CONFIG.setRememberMe(rememberMe);
+        if (!errFunc) {
+            errFunc = function() { throw `Could not signup!`; };
         }
-        let creds = {};
-        creds[KEY_USERNAME] = res[KEY_EMAIL];
-        creds[KEY_PASSWORD] = password;
-        window.JEQL_CONFIG.setCredentials(creds);
-        window.JEQL_CONFIG.authLocked = false;
+
+        if (typeof(onreset) !== "function") {
+            let onresetStr = onreset;
+            onreset = function(token) {
+                let connector = onresetStr.includes("?") ? "&" : "?";
+                window.location.assign(onresetStr + connector + encodeURIComponent(JEQL.ARG_RESET_TOKEN) + "=" + encodeURIComponent(token));
+            }
+        }
+        data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
+        data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
+        data[JEQL.KEY_TENANT] = window.JEQL__TENANT;
+
+        let resetFunc = function(ret) { onreset(ret[JEQL.KEY_RESET_KEY]); };
+        let resetDict = {};
+        resetDict[JEQL_REQUESTS.HTTP_STATUS_OK] = resetFunc;
+        resetDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
+
+        if (!data.hasOwnProperty(data[JEQL.KEY_TEMPLATE])) {
+            JEQL.fetchDefaultTemplates(function(config) {
+                data[JEQL.KEY_TEMPLATE] = config[JEQL.KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE];
+                JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_RESET, resetDict, null, data);
+            });
+        } else {
+            JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_RESET, resetDict, null, data);
+        }
+    },
+    sendEmail: function(template, parameters, attachments, onSuccess, onError) {
+        let data = {};
+        data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
+        data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
+        data[JEQL.KEY_PARAMETERS] = parameters;
+        data[JEQL.KEY_ATTACHMENTS] = attachments;
+        data[JEQL.KEY_TEMPLATE] = template;
+
+        let resDict = {};
+        resDict[JEQL_REQUESTS.HTTP_STATUS_OK] = onSuccess;
+        resDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
+        JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SEND_EMAIL, resDict, data);
+    },
+    signup: function(data, onSignup, errFunc) {
+        if (!onSignup) {
+            onSignup = function() {  };
+        }
+        if (!errFunc) {
+            errFunc = function() { throw `Could not signup!`; };
+        }
+        if (typeof(onSignup) !== "function") {
+            let onSignupStr = onSignup;
+            onSignup = function(token) {
+                let connector = onSignupStr.includes("?") ? "&" : "?";
+                window.location.assign(onSignupStr + connector + encodeURIComponent(JEQL.ARG_INVITE_TOKEN) + "=" + encodeURIComponent(token));
+            }
+        }
+        data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
+        data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
+
+        let signupFunc = function(ret) { onSignup(ret[JEQL.KEY_INVITE_KEY]); };
+        let signupDict = {};
+        signupDict[JEQL_REQUESTS.HTTP_STATUS_OK] = signupFunc;
+        signupDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
+
+        if (!data.hasOwnProperty(data[JEQL.KEY_TEMPLATE])) {
+            JEQL.fetchDefaultTemplates(function(templates) {
+                data[JEQL.KEY_TEMPLATE] = templates[JEQL.KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE];
+                data[JEQL.KEY_EXISTING_USER_TEMPLATE] = templates[JEQL.KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE];
+                JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SIGNUP, signupDict, null, data);
+            })
+        } else {
+            JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SIGNUP, signupDict, null, data);
+        }
+    },
+    signupWithToken: function(token, password, handleFunc) {
+        let data = {};
+        data[JEQL.KEY_INVITE_KEY] = token;
+        data[JEQL.KEY_PASSWORD] = password;
+
+        JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SIGNUP_WITH_TOKEN, handleFunc, null, data);
+    },
+    signupWithTokenAndLogin: function(token, password, handleFunc, rememberMe, onError) {
+        if (typeof(handleFunc) !== "function") {
+            let handleFuncStr = handleFunc;
+            handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
+        }
         let postHandleFunc = function() {
-            if (res.hasOwnProperty(KEY_PARAMETERS)) {
-                handleFunc(res[KEY_PARAMETERS]);
+            JEQL.fetchSignupData(token, handleFunc);
+        }
+        let preHandleFunc = function(res) {
+            if (rememberMe !== null && rememberMe !== undefined) {
+                window.JEQL__REQUEST_HELPER.setRememberMe(rememberMe);
+            }
+            let creds = {};
+            creds[JEQL.KEY_USERNAME] = res[JEQL.KEY_EMAIL];
+            creds[JEQL.KEY_PASSWORD] = password;
+            window.JEQL__REQUEST_HELPER.setCredentials(creds);
+            window.JEQL__REQUEST_HELPER.authLocked = false;
+        }
+        let preHandleDict = {};
+        preHandleDict[JEQL_REQUESTS.HTTP_STATUS_OK] = preHandleFunc;
+        if (onError) {
+            preHandleDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
+        }
+        JEQL.signupWithToken(token, password, preHandleDict);
+    },
+    resetWithToken: function(token, password, handleFunc) {
+        let data = {};
+        data[JEQL.KEY_RESET_KEY] = token;
+        data[JEQL.KEY_PASSWORD] = password;
+
+        JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_RESET_WITH_TOKEN, handleFunc, null, data);
+    },
+    resetWithTokenAndLogin: function(token, password, handleFunc, rememberMe, onError) {
+        if (typeof(handleFunc) !== "function") {
+            let handleFuncStr = handleFunc;
+            handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
+        }
+        let preHandleFunc = function(res) {
+            if (rememberMe !== null && rememberMe !== undefined) {
+                window.JEQL__REQUEST_HELPER.setRememberMe(rememberMe);
+            }
+            let creds = {};
+            creds[JEQL.KEY_USERNAME] = res[JEQL.KEY_EMAIL];
+            creds[JEQL.KEY_PASSWORD] = password;
+            window.JEQL__REQUEST_HELPER.setCredentials(creds);
+            window.JEQL__REQUEST_HELPER.authLocked = false;
+            if (res.hasOwnProperty(JEQL.KEY_PARAMETERS)) {
+                handleFunc(res[JEQL.KEY_PARAMETERS]);
             } else {
                 handleFunc({});
             }
         }
-        getOrSelectAppConfig(window.JEQL_CONFIG, postHandleFunc, true);
-    }
-    let preHandleDict = {};
-    preHandleDict[200] = preHandleFunc;
-    if (onError) {
-        preHandleDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
-    }
-    resetWithToken(token, password, preHandleDict);
-}
-
-export function callLoginDirectly(email, password, rememberMe, onSuccess, onError) {
-    if (rememberMe !== null && rememberMe !== undefined) {
-        window.JEQL_CONFIG.setRememberMe(rememberMe);
-    }
-
-    let preSuccess = function() {
-        getOrSelectAppConfig(window.JEQL_CONFIG, onSuccess, true);
-    }
-
-    let callDict = {};
-    callDict[200] = preSuccess;
-    callDict[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
-
-    let loginData = {};
-    loginData[KEY_USERNAME] = email;
-    loginData[KEY_PASSWORD] = password
-
-    requests.makeJson(window.JEQL_CONFIG, ACTION_LOGIN, callDict, loginData);
-}
-
-export function loginWithInviteToken(email, password, rememberMe, token, handleFunc, onError) {
-    if (typeof(handleFunc) !== "function") {
-        let handleFuncStr = handleFunc;
-        handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
-    }
-
-    let onSuccess = function() { fetchSignupData(token, handleFunc); }
-
-    callLoginDirectly(email, password, rememberMe, onSuccess, onError);
-}
-
-export function signupStatus(token, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
-    signupStatusWithCode(token, null, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid)
-}
-
-export function signupStatusWithCode(token, code, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
-    let data = {};
-    data[KEY_INVITE_OR_POLL_KEY] = token;
-    if (code) { data[KEY_INVITE_CODE] = code; }
-    let renderFuncs = {};
-    renderFuncs[200] = function(res) {
-        let status = res[KEY_INVITE_KEY_STATUS];
-        if (status === SIGNUP_STARTED) {
-            onStarted();
-        } else if (status === SIGNUP_ALREADY_REGISTERED) {
-            onAlreadyRegistered();
-        } else if (status === SIGNUP_COMPLETED) {
-            onCompleted();
-        } else {
-            onFresh();
+        let preHandleDict = {};
+        preHandleDict[JEQL_REQUESTS.HTTP_STATUS_OK] = preHandleFunc;
+        if (onError) {
+            preHandleDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
         }
-    };
-    renderFuncs[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_SIGNUP_STATUS, renderFuncs, data);
-}
-
-export function resetStatusWithCode(token, code, onFresh, onStarted, onCompleted, onInvalid) {
-    let data = {};
-    data[KEY_RESET_OR_POLL_KEY] = token;
-    if (code) { data[KEY_RESET_CODE] = code; }
-    let renderFuncs = {};
-    renderFuncs[200] = function(res) {
-        let status = res[KEY_RESET_KEY_STATUS];
-        if (status === RESET_STARTED) {
-            onStarted();
-        } else if (status === RESET_COMPLETED) {
-            onCompleted();
-        } else {
-            onFresh();
+        JEQL.resetWithToken(token, password, preHandleDict);
+    },
+    callLoginDirectly: function(email, password, rememberMe, onSuccess, onError) {
+        if (rememberMe !== null && rememberMe !== undefined) {
+            window.JEQL__REQUEST_HELPER.setRememberMe(rememberMe);
         }
-    };
-    renderFuncs[requests.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
-    requests.makeSimple(window.JEQL_CONFIG, ACTION_RESET_STATUS, renderFuncs, data);
-}
 
-function callbackDoNotRefreshConnections(res, config) {
-    resetAppConfig(config, function() { console.error(ERR_COULD_NOT_REFRESH_APP_CONFIG); })
-}
+        let callDict = {};
+        callDict[JEQL_REQUESTS.HTTP_STATUS_OK] = onSuccess;
+        callDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
 
-function expiredConnectionHandler(res, config, action, renderFunc, body, json) {
-    let appConfig = getOrSelectAppConfig(config);
-    let reverseMap = {};
-    for (let idx in appConfig[KEY_CONNECTIONS]) {
-        reverseMap[appConfig[KEY_CONNECTIONS][idx]] = idx;
-    }
+        let loginData = {};
+        loginData[JEQL.KEY_USERNAME] = email;
+        loginData[JEQL.KEY_PASSWORD] = password
 
-    selectAppConfig(config,
-        function() {
-            let newAppConfig = getOrSelectAppConfig(config);
-            if (json) {
-                json = JSON.parse(json);
+        JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_LOGIN, callDict, loginData);
+    },
+    loginWithInviteToken: function(email, password, rememberMe, token, handleFunc, onError) {
+        if (typeof(handleFunc) !== "function") {
+            let handleFuncStr = handleFunc;
+            handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
+        }
+
+        let onSuccess = function() { JEQL.fetchSignupData(token, handleFunc); }
+
+        JEQL.callLoginDirectly(email, password, rememberMe, onSuccess, onError);
+    },
+    signupStatusWithCode: function(token, code, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
+        let data = {};
+        data[JEQL.KEY_INVITE_OR_POLL_KEY] = token;
+        if (code) { data[JEQL.KEY_INVITE_CODE] = code; }
+        let renderFuncs = {};
+        renderFuncs[JEQL_REQUESTS.HTTP_STATUS_OK] = function(res) {
+            let status = res[JEQL.KEY_INVITE_KEY_STATUS];
+            if (status === JEQL.SIGNUP_STARTED) {
+                onStarted();
+            } else if (status === JEQL.SIGNUP_ALREADY_REGISTERED) {
+                onAlreadyRegistered();
+            } else if (status === JEQL.SIGNUP_COMPLETED) {
+                onCompleted();
             } else {
-                json = requests.urlEncodedToJson(body);
+                onFresh();
+            }
+        };
+        renderFuncs[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
+        JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SIGNUP_STATUS, renderFuncs, data);
+    },
+    signupStatus(token, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
+        JEQL.signupStatusWithCode(token, null, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid)
+    },
+    resetStatusWithCode: function(token, code, onFresh, onStarted, onCompleted, onInvalid) {
+        let data = {};
+        data[JEQL.KEY_RESET_OR_POLL_KEY] = token;
+        if (code) { data[JEQL.KEY_RESET_CODE] = code; }
+        let renderFuncs = {};
+        renderFuncs[JEQL_REQUESTS.HTTP_STATUS_OK] = function(res) {
+            let status = res[JEQL.KEY_RESET_KEY_STATUS];
+            if (status === JEQL.RESET_STARTED) {
+                onStarted();
+            } else if (status === JEQL.RESET_COMPLETED) {
+                onCompleted();
+            } else {
+                onFresh();
+            }
+        };
+        renderFuncs[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
+        JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_RESET_STATUS, renderFuncs, data);
+    },
+    submit(input, renderFunc, doNotRefresh = false, asFile = false) {
+        let oldRenderFunc = renderFunc;
+        if (renderFunc.constructor !== Object) {
+            renderFunc = {};
+            renderFunc[JEQL.HTTP_STATUS_OK] = oldRenderFunc;
+        }
+        JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, asFile ? JEQL.ACTION_SUBMIT_FILE : JEQL.ACTION_SUBMIT, renderFunc, input);
+    },
+    submitFile(input, renderFunc) {
+        JEQL.submit(input, renderFunc, false, true);
+    },
+    initPublic: function(tenant, application, configuration, onLoad, jaaqlUrl = null) {
+        JEQL.init(tenant, application, configuration, onLoad, false, jaaqlUrl, false);
+    },
+    getOrInitJEQLRequestHelper: function(jaaqlUrl) {
+        if (window.hasOwnProperty("JEQL__REQUEST_HELPER")) {
+            return window.JEQL__REQUEST_HELPER;
+        } else {
+            if (jaaqlUrl === null) {
+                jaaqlUrl = JEQL.getJaaqlUrl();
+            } else {
+                if (!jaaqlUrl.startsWith("http")) {
+                    jaaqlUrl = "https://www." + jaaqlUrl;
+                    if (!jaaqlUrl.endsWith("/api")) {
+                        jaaqlUrl += "/api";
+                    }
+                }
             }
 
-            let wasArray = true;
-            if (!Array.isArray(json)) {
-                wasArray = false;
-                json = [json];
+            let setAuthTokenFunc = function (storage, authToken) {
+                storage.setItem(JEQL.STORAGE_JAAQL_TOKEN, authToken);
+            };
+            let logoutFunc = function (storage) {
+                storage.removeItem(JEQL.STORAGE_JAAQL_TOKEN);
+            };
+            let requestHelper = new JEQL_REQUESTS.RequestHelper(jaaqlUrl, JEQL.ACTION_LOGIN, JEQL.ACTION_REFRESH, JEQL.showLoginModal,
+                JEQL.onRefreshToken, JEQL.xHttpSetAuth, [JEQL.ACTION_SUBMIT, JEQL.ACTION_SUBMIT_FILE], JEQL.KEY_USERNAME,
+                setAuthTokenFunc, logoutFunc);
+
+            requestHelper.setRememberMe(window.localStorage.getItem(JEQL.STORAGE_JAAQL_TOKEN) !== null);
+
+            window.JEQL__REQUEST_HELPER = requestHelper;
+            return requestHelper;
+        }
+    },
+    init(application, tenant = null, configuration = null, onLoad = null, doRenderAccountBanner = true, jaaqlUrl = null,
+         authenticated = true) {
+        if (!onLoad) { onLoad = function() {  }; }
+
+        window.JEQL__TENANT = tenant;
+        window.JEQL__APP = application;
+        window.JEQL__CONFIG = configuration;
+
+        let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl);
+
+        if (!authenticated) {
+            let body = {};
+            body[JEQL.KEY_APPLICATION] = application;
+            body[JEQL.KEY_CONFIGURATION] = configuration;
+            body[JEQL.KEY_TENANT] = tenant;
+            let credentials = JEQL_REQUESTS.makeSimple(requestHelper, JEQL.ACTION_FETCH_APPLICATION_PUBLIC_USER, null, body, null,
+                false);
+            if (!credentials) {
+                console.error("Could not find public user");
+                return
             }
+            requestHelper.setCredentials(credentials);
+        }
 
-            for (let idx in json) {
-                json[idx][KEY_CONNECTION] = newAppConfig[KEY_CONNECTIONS][reverseMap[json[idx][KEY_CONNECTION]]];
-            }
+        requestHelper.authToken = requestHelper.getStorage().getItem(JEQL.STORAGE_JAAQL_TOKEN);
+        if (authenticated && authenticated !== true) {
+            requestHelper.authToken = authenticated;
+        }
+        if (requestHelper.authToken) {
+            requestHelper.authLocked = false;
+        }
 
-            if (!wasArray) {
-                json = json[0];
-            }
+        if (doRenderAccountBanner) {
+            JEQL.renderAccountBanner(requestHelper);
+        }
 
-            if (body) {
-                body = requests.jsonToUrlEncoded(json);
-                json = undefined;
-            }
+        if (authenticated && !requestHelper.authToken) {
+            requestHelper.loginFunc(requestHelper, function() { onLoad(requestHelper); });
+        } else {
+            onLoad(requestHelper);
+        }
 
-            let newRenderFuncs = {...renderFunc};
-            newRenderFuncs[HTTP_STATUS_CONNECTION_EXPIRED] = callbackDoNotRefreshConnections;
-
-            requests.make(config, action, newRenderFuncs, body, JSON.stringify(json));
-        },
-        appConfig[KEY_NAME]);
-}
-
-export function formQuery(config, query, queryParameters = null, dataset = null, database = null) {
-    if (queryParameters === null) { queryParameters = {}; }
-
-    let formed = {};
-    formed[KEY_QUERY] = query;
-    formed[KEY_PARAMETERS] = queryParameters;
-    formed[KEY_CONNECTION] = dataset;
-    formed[KEY_DATABASE] = database;
-    return formed;
-}
-
-export function submitFile(config, input, renderFunc) {
-    submit(config, input, renderFunc, false, true);
-}
-
-export function submit(config, input, renderFunc, doNotRefresh = false, asFile = false) {
-    let oldRenderFunc = renderFunc;
-    if (renderFunc.constructor !== Object) {
-        renderFunc = {};
-        renderFunc[HTTP_STATUS_OK] = oldRenderFunc;
+        return requestHelper;
+    },
+    initNoTenant(application, onLoad) {
+        return JEQL.init(application, null, null, onLoad);
     }
-    renderFunc[HTTP_STATUS_CONNECTION_EXPIRED] = doNotRefresh ?
-        callbackDoNotRefreshConnections :
-        expiredConnectionHandler;
-    requests.makeJson(config, asFile ? ACTION_SUBMIT_FILE : ACTION_SUBMIT, renderFunc, input);
 }
+
+console.log("Loaded JEQL library, version " + JEQL.VERSION);

@@ -4,7 +4,7 @@
     --light-theme-color: #FFEAC4;
 }
 
-.jeql-modal-outer {
+.jeql__modal_outer {
     background-color: rgba(0, 0, 0, 0.5);
     position: fixed;
     top: 0;
@@ -15,7 +15,7 @@
     transition: transform 0.25s ease-out;
 }
 
-.jeql-modal, .jeql-modal-wide, .jeql-modal-widest, .jeql-modal-auto {
+.jeql__modal, .jeql__modal_wide, .jeql__modal_widest, .jeql__modal_auto {
     cursor: auto;
     font-family: 'Roboto', sans-serif;
 
@@ -32,54 +32,54 @@
 }
 
 @media only screen and (max-aspect-ratio : 1/1) {
-    .jeql-modal {
+    .jeql__modal {
         width: 60%;
     }
-    .jeql-modal-wide {
+    .jeql__modal_wide {
         width: 85%;
     }
-    .jeql-modal-widest {
+    .jeql__modal_widest {
         width: 90%;
     }
 }
 
 @media only screen and (min-aspect-ratio : 1/1) and (max-aspect-ratio : 3/2) {
-    .jeql-modal {
+    .jeql__modal {
         width: 40%
     }
-    .jeql-modal-wide {
+    .jeql__modal_wide {
         width: 65%;
     }
-    .jeql-modal-widest {
+    .jeql__modal_widest {
         width: 87.5%;
     }
 }
 
 @media only screen and (min-aspect-ratio : 3/2) {
-    .jeql-modal {
+    .jeql__modal {
         width: 20%
     }
-    .jeql-modal-wide {
+    .jeql__modal_wide {
         width: 50%;
     }
-    .jeql-modal-widest {
+    .jeql__modal_widest {
         width: 85%;
     }
 }
 
-.jeql-modal-auto {
+.jeql__modal_auto {
     width: auto;
 }
 
-.jeql-strong {
+.jeql__strong {
     font-weight: 400;
 }
 
-.jeql-input-full {
+.jeql__input_full {
     width: 100%;
 }
 
-.jeql-input {
+.jeql__input {
     padding: 10px 14px;
     margin: 8px 0;
     display: inline-block;
@@ -90,21 +90,11 @@
     transition: 0.25s;
 }
 
-.jeql-input-mfa {
-    flex: 1 1 auto;
-    text-align: center;
-    padding: 10px 0px;
-}
-
-.jeql-input:focus {
+.jeql__input:focus {
     border: 2px solid var(--main-theme-color);
 }
 
-.jeql-selected-app-config {
-    background-color: rgba(var(--main-theme-color-rgb), 0.35);
-}
-
-.jeql-button {
+.jeql__button {
     backface-visibility: hidden;
     background-color: var(--main-theme-color);
     text-transform: uppercase;
@@ -130,34 +120,34 @@
     touch-action: manipulation;
     width: 100%;}
 
-.jeql-button:disabled {
+.jeql__button:disabled {
     cursor: default;
 }
 
-.jeql-button:active {
+.jeql__button:active {
     box-shadow: rgba(93, 50, 50, .1) 0 0 0 1px inset,
         rgba(93, 50, 50, .2) 0 6px 15px 0,
         rgba(0, 0, 0, .1) 0 2px 2px 0,
         rgba(211, 151, 50, .3) 0 0 0 4px;
 }
 
-.jeql-button:hover {
+.jeql__button:hover {
     filter: brightness(1.1);
 }
 
-.jeql-button-yes {
+.jeql__button_yes {
     background-color: green;
 }
 
-.jeql-button-no {
+.jeql__button_no {
     background-color: red;
 }
 
-.jeql-table-header-sort {
+.jeql__table_header_sort {
     cursor: pointer;
 }
 
-.jeql-modal-close {
+.jeql__modal_close {
     position: absolute;
     top: 4%;
     padding-top: 0.5%;
@@ -168,18 +158,18 @@
     transition: color 0.1s;
 }
 
-.jeql-modal-close:hover {
+.jeql__modal_close:hover {
     color: var(--main-theme-color);
 }
 
-.jeql-modal-close:active {
+.jeql__modal_close:active {
     color: #ff0000;
 }
 
-.jeql-cursor-pointer {
+.jeql__cursor_pointer {
     cursor: pointer;
 }
 
-.jeql-center {
+.jeql__center {
     text-align: center;
 }
