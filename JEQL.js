@@ -453,7 +453,7 @@ let JEQL_REQUESTS = {
 }
 
 let JEQL = {
-    VERSION: "3.0.1",
+    VERSION: "3.0.2",
     STORAGE_JAAQL_TOKEN: "JAAQL__TOKEN",
     FIESTA_INTRODUCER: "introducer",
     FIESTA_EXPRESSION: "expression",
@@ -476,7 +476,6 @@ let JEQL = {
     ACTION_FETCH_APPLICATION_PUBLIC_USER: "GET /applications/public",
     ACTION_REFRESH: "POST /oauth/refresh",
     ACTION_SUBMIT: "POST /submit",
-    ACTION_SUBMIT_FILE: "POST /submit-file",
     ACTION_SEND_EMAIL: "POST /emails",
     ACTION_REQUEST_RENDERED_DOCUMENT: "POST /documents",
     ACTION_DOWNLOAD_RENDERED_DOCUMENT: "GET /documents",
@@ -521,6 +520,7 @@ let JEQL = {
     KEY_TENANT: "tenant",
     KEY_INVITE_OR_POLL_KEY: "invite_or_poll_key",
     KEY_RESET_OR_POLL_KEY: "reset_or_poll_key",
+    KEY_READ_ONLY: "read_only",
     KEY_INVITE_CODE: "invite_code",
     KEY_RESET_CODE: "reset_code",
     KEY_INVITE_KEY: "invite_key",
@@ -1238,16 +1238,13 @@ let JEQL = {
         renderFuncs[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
         JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_RESET_STATUS, renderFuncs, data);
     },
-    submit(input, renderFunc, doNotRefresh = false, asFile = false) {
+    submit(input, renderFunc) {
         let oldRenderFunc = renderFunc;
         if (renderFunc.constructor !== Object) {
             renderFunc = {};
             renderFunc[JEQL.HTTP_STATUS_OK] = oldRenderFunc;
         }
-        JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, asFile ? JEQL.ACTION_SUBMIT_FILE : JEQL.ACTION_SUBMIT, renderFunc, input);
-    },
-    submitFile(input, renderFunc) {
-        JEQL.submit(input, renderFunc, false, true);
+        JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SUBMIT, renderFunc, input);
     },
     initPublic: function(tenant, application, configuration, onLoad, jaaqlUrl = null) {
         JEQL.init(tenant, application, configuration, onLoad, false, jaaqlUrl, false);
