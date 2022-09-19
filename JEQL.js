@@ -453,7 +453,7 @@ let JEQL_REQUESTS = {
 }
 
 let JEQL = {
-    VERSION: "3.0.0",
+    VERSION: "3.0.1",
     STORAGE_JAAQL_TOKEN: "JAAQL__TOKEN",
     FIESTA_INTRODUCER: "introducer",
     FIESTA_EXPRESSION: "expression",
