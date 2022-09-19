@@ -1,4 +1,4 @@
-.jeql-spinner-outer {
+.jeql__spinner_outer {
     background-color: rgba(0, 0, 0, 0.5);
     position: fixed;
     top: 0;
@@ -8,7 +8,7 @@
     z-index: 6002;
 }
 
-@keyframes jeql-spinner-animation {
+@keyframes jeql__spinner_animation {
     0% {
         transform: translate3d(-50%, -50%, 0) rotate(0deg);
     }
@@ -17,7 +17,7 @@
     }
 }
 
-.jeql-spinner::before {
+.jeql__spinner::before {
     animation: 1.5s linear infinite jeql-spinner-animation;
     animation-play-state: inherit;
     border: solid 5px var(--light-theme-color);
