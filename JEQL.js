@@ -53,7 +53,6 @@ let JEQL_UTILS = {
         );
 
         JEQL_UTILS.appendIfNoExist(head, JEQL_UTILS.genStyleSheetEle(baseDir + "JEQL.css", "jeql__css_main"));
-        JEQL_UTILS.appendIfNoExist(head, JEQL_UTILS.genStyleSheetEle(baseDir + "spinner/spinner.css", "jeql__css_spinner"));
     },
     createSpinner: function() {
         let spinner = document.createElement("div");
@@ -109,7 +108,10 @@ let JEQL_REQUESTS = {
             this.credentials = null;
         }
 
-        setCredentials(credentials) { this.credentials = credentials; }
+        setCredentials(credentials) {
+            this.authLocked = false;
+            this.credentials = credentials;
+        }
 
         setRememberMe(isRememberMe) {
             this.rememberMe = isRememberMe;
@@ -453,7 +455,7 @@ let JEQL_REQUESTS = {
 }
 
 let JEQL = {
-    VERSION: "3.0.2",
+    VERSION: "3.0.3",
     STORAGE_JAAQL_TOKEN: "JAAQL__TOKEN",
     FIESTA_INTRODUCER: "introducer",
     FIESTA_EXPRESSION: "expression",
@@ -473,7 +475,7 @@ let JEQL = {
     ACTION_SIGNUP_STATUS: "GET /account/signup/status",
     ACTION_RESET_STATUS: "GET /account/reset-password/status",
     ACTION_LOGIN: "POST /oauth/token",
-    ACTION_FETCH_APPLICATION_PUBLIC_USER: "GET /applications/public",
+    ACTION_FETCH_APPLICATION_PUBLIC_USER: "GET /public",
     ACTION_REFRESH: "POST /oauth/refresh",
     ACTION_SUBMIT: "POST /submit",
     ACTION_SEND_EMAIL: "POST /emails",
@@ -871,7 +873,11 @@ let JEQL = {
     },
     showLoginModal: function(requestHelper, callback, errMsg) {
         if (requestHelper.credentials) {
-            JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, callback, requestHelper.credentials);
+            let creds = {};
+            creds[JEQL.KEY_USERNAME] = requestHelper.credentials[JEQL.KEY_USERNAME];
+            creds[JEQL.KEY_PASSWORD] = requestHelper.credentials[JEQL.KEY_PASSWORD];
+            creds[JEQL.KEY_TENANT] = window.JEQL__TENANT;
+            JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, callback, creds);
         } else {
             JEQL.renderModal(function(modal) { JEQL.rendererLogin(modal, requestHelper, callback, errMsg); }, false);
         }
@@ -1016,15 +1022,27 @@ let JEQL = {
     },
     convertCallbackToObject: function(callback) {
         return function(data) {
-            callback(JEQL.tupleToObject(data[JEQL.KEY_ROWS], data[JEQL.KEY_COLUMNS]));
+            callback(JEQL.tupleToObject(data[JEQL.KEY_ROWS][0], data[JEQL.KEY_COLUMNS]));
         }
+    },
+    formQuery: function(query, params, schema) {
+        let formed = {};
+        formed[JEQL.KEY_QUERY] = query;
+        if (params) {
+            formed[JEQL.KEY_PARAMETERS] = params;
+        }
+        formed[JEQL.KEY_APPLICATION] = window.JEQL__APP;
+        formed[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
+        if (schema) {
+            formed[JEQL.KEY_SCHEMA] = schema;
+        }
+        return formed;
     },
     fetchDefaultTemplates(callback) {
         let query = {};
-        query[JEQL.KEY_QUERY] = "SELECT * FROM my_application_configurations WHERE application = :application AND configuration = :configuration";
+        query[JEQL.KEY_QUERY] = "SELECT * FROM my_email_template_defaults WHERE application = :application";
         let parameters = {};
         parameters[JEQL.KEY_APPLICATION] = window.JEQL__APP;
-        parameters[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
         query[JEQL.KEY_PARAMETERS] = parameters;
         JEQL.submit(query, JEQL.convertCallbackToObject(callback));
     },
@@ -1090,6 +1108,7 @@ let JEQL = {
         }
         data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
         data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
+        data[JEQL.KEY_TENANT] = window.JEQL__TENANT;
 
         let signupFunc = function(ret) { onSignup(ret[JEQL.KEY_INVITE_KEY]); };
         let signupDict = {};
@@ -1118,9 +1137,6 @@ let JEQL = {
             let handleFuncStr = handleFunc;
             handleFunc = function() { window.location.assign(handleFuncStr + "?token=" + token); }
         }
-        let postHandleFunc = function() {
-            JEQL.fetchSignupData(token, handleFunc);
-        }
         let preHandleFunc = function(res) {
             if (rememberMe !== null && rememberMe !== undefined) {
                 window.JEQL__REQUEST_HELPER.setRememberMe(rememberMe);
@@ -1128,8 +1144,9 @@ let JEQL = {
             let creds = {};
             creds[JEQL.KEY_USERNAME] = res[JEQL.KEY_EMAIL];
             creds[JEQL.KEY_PASSWORD] = password;
+            window.JEQL__REQUEST_HELPER.authToken = null;
             window.JEQL__REQUEST_HELPER.setCredentials(creds);
-            window.JEQL__REQUEST_HELPER.authLocked = false;
+            JEQL.fetchSignupData(token, handleFunc);
         }
         let preHandleDict = {};
         preHandleDict[JEQL_REQUESTS.HTTP_STATUS_OK] = preHandleFunc;
@@ -1157,8 +1174,8 @@ let JEQL = {
             let creds = {};
             creds[JEQL.KEY_USERNAME] = res[JEQL.KEY_EMAIL];
             creds[JEQL.KEY_PASSWORD] = password;
+            window.JEQL__REQUEST_HELPER.authToken = null;
             window.JEQL__REQUEST_HELPER.setCredentials(creds);
-            window.JEQL__REQUEST_HELPER.authLocked = false;
             if (res.hasOwnProperty(JEQL.KEY_PARAMETERS)) {
                 handleFunc(res[JEQL.KEY_PARAMETERS]);
             } else {
@@ -1217,7 +1234,7 @@ let JEQL = {
         renderFuncs[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
         JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SIGNUP_STATUS, renderFuncs, data);
     },
-    signupStatus(token, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
+    signupStatus: function(token, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid) {
         JEQL.signupStatusWithCode(token, null, onFresh, onStarted, onAlreadyRegistered, onCompleted, onInvalid)
     },
     resetStatusWithCode: function(token, code, onFresh, onStarted, onCompleted, onInvalid) {
@@ -1238,21 +1255,26 @@ let JEQL = {
         renderFuncs[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onInvalid;
         JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_RESET_STATUS, renderFuncs, data);
     },
-    submit(input, renderFunc) {
+    submit: function(input, renderFunc) {
+        if (!renderFunc) { renderFunc = function() {  }; }
         let oldRenderFunc = renderFunc;
         if (renderFunc.constructor !== Object) {
             renderFunc = {};
-            renderFunc[JEQL.HTTP_STATUS_OK] = oldRenderFunc;
+            renderFunc[JEQL_REQUESTS.HTTP_STATUS_OK] = oldRenderFunc;
         }
         JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SUBMIT, renderFunc, input);
     },
     initPublic: function(tenant, application, configuration, onLoad, jaaqlUrl = null) {
-        JEQL.init(tenant, application, configuration, onLoad, false, jaaqlUrl, false);
+        JEQL.init(application, tenant, configuration, onLoad, false, jaaqlUrl, false);
     },
-    getOrInitJEQLRequestHelper: function(jaaqlUrl) {
+    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, configuration = null, tenant = null) {
         if (window.hasOwnProperty("JEQL__REQUEST_HELPER")) {
             return window.JEQL__REQUEST_HELPER;
         } else {
+            window.JEQL__TENANT = tenant;
+            window.JEQL__APP = application;
+            window.JEQL__CONFIG = configuration;
+
             if (jaaqlUrl === null) {
                 jaaqlUrl = JEQL.getJaaqlUrl();
             } else {
@@ -1280,21 +1302,17 @@ let JEQL = {
             return requestHelper;
         }
     },
-    init(application, tenant = null, configuration = null, onLoad = null, doRenderAccountBanner = true, jaaqlUrl = null,
-         authenticated = true) {
+    init: function(application = null, tenant = null, configuration = null, onLoad = null,
+                   doRenderAccountBanner = true, jaaqlUrl = null, authenticated = true) {
         if (!onLoad) { onLoad = function() {  }; }
 
-        window.JEQL__TENANT = tenant;
-        window.JEQL__APP = application;
-        window.JEQL__CONFIG = configuration;
-
-        let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl);
+        let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl, application, configuration, tenant);
 
         if (!authenticated) {
             let body = {};
-            body[JEQL.KEY_APPLICATION] = application;
-            body[JEQL.KEY_CONFIGURATION] = configuration;
-            body[JEQL.KEY_TENANT] = tenant;
+            body[JEQL.KEY_APPLICATION] = window.JEQL__APP;
+            body[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
+            body[JEQL.KEY_TENANT] = window.JEQL__TENANT;
             let credentials = JEQL_REQUESTS.makeSimple(requestHelper, JEQL.ACTION_FETCH_APPLICATION_PUBLIC_USER, null, body, null,
                 false);
             if (!credentials) {
@@ -1324,7 +1342,7 @@ let JEQL = {
 
         return requestHelper;
     },
-    initNoTenant(application, onLoad) {
+    initNoTenant: function(application, onLoad) {
         return JEQL.init(application, null, null, onLoad);
     }
 }
