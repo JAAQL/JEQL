@@ -779,12 +779,15 @@ let JEQL = {
         JEQL.makeBuildable(element);
         JEQL.rendererLogin(element, window.JEQL__REQUEST_HELPER, callback, null);
     },
-    login(data, rememberMe, loginHandleFunc) {
+    login: function(data, rememberMe, loginHandleFunc) {
         let requestHelper = window.JEQL__REQUEST_HELPER;
 
         requestHelper.logout(false);
         if (rememberMe !== requestHelper.rememberMe) {
             requestHelper.setRememberMe(rememberMe);
+        }
+        if (!(JEQL.KEY_TENANT in data)) {
+            data[JEQL.KEY_TENANT] = window.JEQL__TENANT;
         }
         JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, loginHandleFunc, data);
     },
@@ -1199,6 +1202,7 @@ let JEQL = {
         callDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
 
         let loginData = {};
+        loginData[JEQL.KEY_TENANT] = window.JEQL__TENANT;
         loginData[JEQL.KEY_USERNAME] = email;
         loginData[JEQL.KEY_PASSWORD] = password
 
