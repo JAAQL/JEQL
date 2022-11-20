@@ -63,7 +63,11 @@ let JEQL_UTILS = {
         document.body.appendChild(spinner);
     },
     destroySpinner: function() {
-        document.body.removeChild(document.getElementsByClassName("jeql__spinner_outer")[0]);
+        try {
+            document.body.removeChild(document.getElementsByClassName("jeql__spinner_outer")[0]);
+        } catch (err) {
+            // TODO ignore if spinner doesn't exist
+        }
     }
 }
 
@@ -106,6 +110,7 @@ let JEQL_REQUESTS = {
             this.parent = null;
 	    	this.submitActions = submitActions;
             this.credentials = null;
+            this.showSpinner = true;
         }
 
         setCredentials(credentials) {
@@ -120,14 +125,23 @@ let JEQL_REQUESTS = {
             }
         }
 
+        setShowSpinner(showSpinner) {
+            this.showSpinner = showSpinner;
+            if (this.parent) {
+                parent.showSpinner = showSpinner;
+            }
+        }
+
         clone() {
-            let ret = new RequestHelper(this.base, this.authAction, this.refreshAction, this.loginFunc, this.refreshFunc, this.setXHttpAuth,
-                this.submitActions, this.usernameField, this.authTokenSetFunc, this.logoutFunc, this.createSpinner, this.destroySpinner);
+            let ret = new JEQL_REQUESTS.RequestHelper(this.base, this.authAction, this.refreshAction, this.loginFunc, this.refreshFunc,
+                this.setXHttpAuth, this.submitActions, this.usernameField, this.authTokenSetFunc, this.logoutFunc, this.createSpinner,
+                this.destroySpinner);
             ret.rememberMe = this.rememberMe;
             ret.parent = this;
             ret.authLocked = false;
             ret.authToken = this.authToken;
             ret.setCredentials(this.credentials);
+            ret.setShowSpinner(this.showSpinner);
             return ret;
         }
 
@@ -239,7 +253,9 @@ let JEQL_REQUESTS = {
         return "";
     },
     xhttpSendRequest: function(requestHelper, xhttp, method, body, json) {
-        requestHelper.createSpinner();
+        if (this.showSpinner) {
+            requestHelper.createSpinner();
+        }
         if (body && !json && method !== 'GET') {
             xhttp.setRequestHeader("Content-Type", "application/x-www-form-urlencoded");
             xhttp.send(body);
@@ -254,14 +270,28 @@ let JEQL_REQUESTS = {
     },
     getResponseCodeHandler: function(renderFunc, status) {
         if (!renderFunc) { return null; }
-        if (renderFunc.constructor === Object) {
-            if (renderFunc.hasOwnProperty(status)) {
-                return renderFunc[status];
-            } else {
-                return null;
-            }
+        if (renderFunc.constructor !== Object) {
+            let newRenderFunc = {}
+            newRenderFunc[JEQL_REQUESTS.HTTP_STATUS_OK] = renderFunc;
+            renderFunc = newRenderFunc;
+        }
+
+        let is_5xx = status.toString()[0] === "5";
+        if (status === JEQL_REQUESTS.HTTP_STATUS_OK) {
+            return renderFunc[JEQL_REQUESTS.HTTP_STATUS_OK];
+        } else if (status === JEQL_REQUESTS.HTTP_STATUS_UNAUTHORIZED) {
+            throw new Error(JEQL_REQUESTS.ERR_UNEXPECTED_CRED_CHALLENGE);
+        } else if (status in renderFunc) {
+            return renderFunc[status];
+        } else if (JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400 in renderFunc && !is_5xx &&
+                status !== JEQL_REQUESTS.HTTP_STATUS_BAD_REQUEST) {
+            return renderFunc[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400];
+        } else if (JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx in renderFunc && !is_5xx) {
+            return renderFunc[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx];
+        } else if (JEQL_REQUESTS.ANY_STATUS in renderFunc) {
+            return renderFunc[JEQL_REQUESTS.ANY_STATUS];
         } else {
-            return status === JEQL_REQUESTS.HTTP_STATUS_OK ? renderFunc : null;
+            throw new Error(JEQL_REQUESTS.ERR_NO_RESPONSE_HANDLER({code: status}));
         }
     },
     make: function(requestHelper, action, renderFunc, body, json, ignoreLock = true) {
@@ -291,50 +321,35 @@ let JEQL_REQUESTS = {
         let xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function() {
             let res = null;
-            let origRenderFunc = null;
 
             if (this.readyState === 4) {
                 requestHelper.destroySpinner();
-                origRenderFunc = renderFunc;
-                renderFunc = JEQL_REQUESTS.getResponseCodeHandler(renderFunc, this.status);
                 res = JEQL_REQUESTS.parseResponse(this);
 
-                if (this.status === JEQL_REQUESTS.HTTP_STATUS_OK) {
-                    if (isOauth || isRefresh) {
-                        requestHelper.setAuthToken(res);
-                        requestHelper.releaseQueues();
-                        renderFunc();
-                    } else {
-                        renderFunc(res);
-                    }
-                } else if (this.status === JEQL_REQUESTS.HTTP_STATUS_ACCEPTED) {
+                if (this.status === JEQL_REQUESTS.HTTP_STATUS_ACCEPTED) {
                     if (isOauth) {
-                        origRenderFunc(res, true);
+                        renderFunc(res, true);
                     }
                 } else if (this.status === JEQL_REQUESTS.HTTP_STATUS_UNAUTHORIZED) {
                     if (isOauth) {
-                        origRenderFunc("Credentials incorrect. Please try again");
+                        renderFunc("Credentials incorrect. Please try again");
                     } else if (isRefresh) {
                         requestHelper.resetAuthToken();
-                        requestHelper.loginFunc(requestHelper, function () { JEQL_REQUESTS.make(requestHelper, action, origRenderFunc, body, json); },
+                        requestHelper.loginFunc(requestHelper, function () { JEQL_REQUESTS.make(requestHelper, action, renderFunc, body, json); },
                             "Credentials expired. Please login again");
                     } else {
                         requestHelper.refreshFunc(requestHelper,
-                            function () { JEQL_REQUESTS.make(requestHelper, action, origRenderFunc, body, json); });
+                            function () { JEQL_REQUESTS.make(requestHelper, action, renderFunc, body, json); });
                     }
+                } else if (isOauth && this.status !== JEQL_REQUESTS.HTTP_STATUS_OK) {
+                    renderFunc("There is an issue with the application. Our automated systems have picked this up and we will look into it asap");
+                    throw new Error(this.response);
                 } else {
-                    if (isOauth) {
-                        origRenderFunc("There is an issue with the application. Our automated systems have picked this up and we will look into it asap");
-                        throw new Error(this.response);
-                    } else if (renderFunc !== null) {
-                        renderFunc(res, requestHelper, action, origRenderFunc, body, json);
-                    } else {
-                        if (JEQL_REQUESTS.HTTP_STATUS_DEFAULT in origRenderFunc) {
-                            origRenderFunc[JEQL_REQUESTS.HTTP_STATUS_DEFAULT](res, requestHelper, action, origRenderFunc, body, json);
-                        } else {
-                            console.error("Unexpected response code from server: " + this.status + " response: " + this.response);
-                        }
+                    if (isOauth || isRefresh) {
+                        requestHelper.setAuthToken(res);
+                        requestHelper.releaseQueues();
                     }
+                    JEQL_REQUESTS.getResponseCodeHandler(renderFunc, this.status)(res, requestHelper, action, renderFunc, body, json);
                 }
             }
         };
@@ -418,27 +433,7 @@ let JEQL_REQUESTS = {
             xhttp.onreadystatechange = function () {
                 if (this.readyState === 4) {
                     requestHelper.destroySpinner();
-                    let origRenderFunc = renderFunc;
-                    if (typeof(renderFunc) === 'object') {
-                        renderFunc = renderFunc[JEQL_REQUESTS.HTTP_STATUS_OK];
-                    }
-                    let is_5xx = this.status.toString()[0] === "5";
-                    if (this.status === JEQL_REQUESTS.HTTP_STATUS_OK) {
-                        renderFunc(JEQL_REQUESTS.parseResponse(this));
-                    } else if (this.status === JEQL_REQUESTS.HTTP_STATUS_UNAUTHORIZED) {
-                        console.log(JEQL_REQUESTS.ERR_UNEXPECTED_CRED_CHALLENGE);
-                    } else if (this.status in origRenderFunc) {
-                        origRenderFunc[this.status](JEQL_REQUESTS.parseResponse(this));
-                    } else if (JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400 in origRenderFunc && !is_5xx &&
-                            this.status !== JEQL_REQUESTS.HTTP_STATUS_BAD_REQUEST) {
-                        origRenderFunc[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400](JEQL_REQUESTS.parseResponse(this));
-                    } else if (JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx in origRenderFunc && !is_5xx) {
-                        origRenderFunc[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx](JEQL_REQUESTS.parseResponse(this));
-                    } else if (JEQL_REQUESTS.ANY_STATUS in origRenderFunc) {
-                        origRenderFunc[JEQL_REQUESTS.ANY_STATUS](JEQL_REQUESTS.parseResponse(this));
-                    } else {
-                        throw JEQL_REQUESTS.ERR_NO_RESPONSE_HANDLER({code: this.status});
-                    }
+                    JEQL_REQUESTS.getResponseCodeHandler(renderFunc, this.status)(JEQL_REQUESTS.parseResponse(this))
                 }
             };
         }
@@ -455,7 +450,7 @@ let JEQL_REQUESTS = {
 }
 
 let JEQL = {
-    VERSION: "3.0.3",
+    VERSION: "3.0.4",
     STORAGE_JAAQL_TOKEN: "JAAQL__TOKEN",
     FIESTA_INTRODUCER: "introducer",
     FIESTA_EXPRESSION: "expression",
@@ -1271,7 +1266,7 @@ let JEQL = {
     initPublic: function(tenant, application, configuration, onLoad, jaaqlUrl = null) {
         JEQL.init(application, tenant, configuration, onLoad, false, jaaqlUrl, false);
     },
-    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, configuration = null, tenant = null) {
+    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, configuration = null, tenant = null, showSpinner = true) {
         if (window.hasOwnProperty("JEQL__REQUEST_HELPER")) {
             return window.JEQL__REQUEST_HELPER;
         } else {
@@ -1297,9 +1292,10 @@ let JEQL = {
                 storage.removeItem(JEQL.STORAGE_JAAQL_TOKEN);
             };
             let requestHelper = new JEQL_REQUESTS.RequestHelper(jaaqlUrl, JEQL.ACTION_LOGIN, JEQL.ACTION_REFRESH, JEQL.showLoginModal,
-                JEQL.onRefreshToken, JEQL.xHttpSetAuth, [JEQL.ACTION_SUBMIT, JEQL.ACTION_SUBMIT_FILE], JEQL.KEY_USERNAME,
+                JEQL.onRefreshToken, JEQL.xHttpSetAuth, [JEQL.ACTION_SUBMIT], JEQL.KEY_USERNAME,
                 setAuthTokenFunc, logoutFunc);
 
+            requestHelper.setShowSpinner(showSpinner);
             requestHelper.setRememberMe(window.localStorage.getItem(JEQL.STORAGE_JAAQL_TOKEN) !== null);
 
             window.JEQL__REQUEST_HELPER = requestHelper;
@@ -1308,6 +1304,7 @@ let JEQL = {
     },
     init: function(application = null, tenant = null, configuration = null, onLoad = null,
                    doRenderAccountBanner = true, jaaqlUrl = null, authenticated = true) {
+        let wasOnLoadNone = !onLoad;
         if (!onLoad) { onLoad = function() {  }; }
 
         let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl, application, configuration, tenant);
@@ -1331,6 +1328,7 @@ let JEQL = {
             requestHelper.authToken = authenticated;
         }
         if (requestHelper.authToken) {
+            requestHelper.releaseQueues();
             requestHelper.authLocked = false;
         }
 
@@ -1338,7 +1336,7 @@ let JEQL = {
             JEQL.renderAccountBanner(requestHelper);
         }
 
-        if (authenticated && !requestHelper.authToken) {
+        if ((authenticated || wasOnLoadNone) && !requestHelper.authToken) {
             requestHelper.loginFunc(requestHelper, function() { onLoad(requestHelper); });
         } else {
             onLoad(requestHelper);
