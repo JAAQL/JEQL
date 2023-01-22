@@ -450,7 +450,7 @@ let JEQL_REQUESTS = {
 }
 
 let JEQL = {
-    VERSION: "3.0.4",
+    VERSION: "3.0.5",
     STORAGE_JAAQL_TOKEN: "JAAQL__TOKEN",
     FIESTA_INTRODUCER: "introducer",
     FIESTA_EXPRESSION: "expression",
@@ -500,7 +500,6 @@ let JEQL = {
     ID_LOGIN_MODAL: "jeql__login_modal",
     ID_LOGIN_BUTTON: "jeql__login_button",
     ID_LOGIN_ERROR: "jeql__login_error",
-    ID_TENANT: "jeql__tenant",
     ID_USERNAME: "jeql__username",
     ID_PASSWORD: "jeql__password",
     ID_REMEMBER_ME: "jeql__remember_me",
@@ -514,7 +513,6 @@ let JEQL = {
     KEY_TEMPLATE: "template",
     KEY_EXISTING_USER_TEMPLATE: "existing_user_template",
     KEY_CONFIGURATION: "configuration",
-    KEY_TENANT: "tenant",
     KEY_INVITE_OR_POLL_KEY: "invite_or_poll_key",
     KEY_RESET_OR_POLL_KEY: "reset_or_poll_key",
     KEY_READ_ONLY: "read_only",
@@ -755,7 +753,6 @@ let JEQL = {
         let ret = {};
         ret[JEQL.KEY_USERNAME] = document.getElementById(JEQL.ID_USERNAME).value;
         ret[JEQL.KEY_PASSWORD] = document.getElementById(JEQL.ID_PASSWORD).value;
-        ret[JEQL.KEY_TENANT] = document.getElementById(JEQL.ID_TENANT) ? document.getElementById(JEQL.ID_TENANT).value : window.JEQL__TENANT;
         return ret;
     },
     handleLoginError: function(modal, loginErrMsg) {
@@ -781,9 +778,6 @@ let JEQL = {
         if (rememberMe !== requestHelper.rememberMe) {
             requestHelper.setRememberMe(rememberMe);
         }
-        if (!(JEQL.KEY_TENANT in data)) {
-            data[JEQL.KEY_TENANT] = window.JEQL__TENANT;
-        }
         JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, loginHandleFunc, data);
     },
     rendererLogin(modal, requestHelper, callback, errMsg) {
@@ -798,15 +792,6 @@ let JEQL = {
             <span id=${JEQL.ID_LOGIN_ERROR} style="color: red"></span>
             <br>
         `);
-
-        if (!window.JEQL__TENANT) {
-            mainLoginDiv.buildHTML(`
-                <label class="${JEQL.CLS_STRONG}">
-                    Tenant
-                    <input class="${JEQL.CLS_INPUT} ${JEQL.CLS_INPUT_FULL}" type="text" placeholder="Enter tenant" id=${JEQL.ID_TENANT}>
-                </label>
-            `);
-        }
 
         mainLoginDiv.buildHTML(`
             <label class="${JEQL.CLS_STRONG}">
@@ -840,9 +825,6 @@ let JEQL = {
         let button = createLoginButton(buttonDiv);
         modal.appendChild(buttonDiv);
         button.addEventListener("click", function() {
-            if (document.getElementById(JEQL.ID_TENANT)) {
-                window.JEQL__TENANT = document.getElementById(JEQL.ID_TENANT).value;
-            }
             if (document.getElementById(JEQL.ID_REMEMBER_ME).checked !== requestHelper.rememberMe) {
                 requestHelper.logout(false, true);
                 requestHelper.setRememberMe(document.getElementById(JEQL.ID_REMEMBER_ME).checked);
@@ -850,11 +832,7 @@ let JEQL = {
             JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, function(loginErrMsg) {
                 if (loginErrMsg) {
                     JEQL.handleLoginError(modal, loginErrMsg);
-                    if (document.getElementById(JEQL.ID_TENANT)) {
-                        document.getElementById(JEQL.ID_TENANT).focus();
-                    } else {
-                        document.getElementById(JEQL.ID_USERNAME).focus();
-                    }
+                    document.getElementById(JEQL.ID_USERNAME).focus();
                 } else {
                     modal.closeModal();
                     callback();
@@ -863,18 +841,13 @@ let JEQL = {
         });
         JEQL.bindButton(JEQL.ID_USERNAME, JEQL.ID_LOGIN_BUTTON);
         JEQL.bindButton(JEQL.ID_PASSWORD, JEQL.ID_LOGIN_BUTTON);
-        if (document.getElementById(JEQL.ID_TENANT)) {
-            document.getElementById(JEQL.ID_TENANT).focus();
-        } else {
-            document.getElementById(JEQL.ID_USERNAME).focus();
-        }
+        document.getElementById(JEQL.ID_USERNAME).focus();
     },
     showLoginModal: function(requestHelper, callback, errMsg) {
         if (requestHelper.credentials) {
             let creds = {};
             creds[JEQL.KEY_USERNAME] = requestHelper.credentials[JEQL.KEY_USERNAME];
             creds[JEQL.KEY_PASSWORD] = requestHelper.credentials[JEQL.KEY_PASSWORD];
-            creds[JEQL.KEY_TENANT] = window.JEQL__TENANT;
             JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, callback, creds);
         } else {
             JEQL.renderModal(function(modal) { JEQL.rendererLogin(modal, requestHelper, callback, errMsg); }, false);
@@ -1061,7 +1034,6 @@ let JEQL = {
         }
         data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
         data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
-        data[JEQL.KEY_TENANT] = window.JEQL__TENANT;
 
         let resetFunc = function(ret) { onreset(ret[JEQL.KEY_RESET_KEY]); };
         let resetDict = {};
@@ -1106,7 +1078,6 @@ let JEQL = {
         }
         data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
         data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
-        data[JEQL.KEY_TENANT] = window.JEQL__TENANT;
 
         let signupFunc = function(ret) { onSignup(ret[JEQL.KEY_INVITE_KEY]); };
         let signupDict = {};
@@ -1197,7 +1168,6 @@ let JEQL = {
         callDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
 
         let loginData = {};
-        loginData[JEQL.KEY_TENANT] = window.JEQL__TENANT;
         loginData[JEQL.KEY_USERNAME] = email;
         loginData[JEQL.KEY_PASSWORD] = password
 
@@ -1263,14 +1233,13 @@ let JEQL = {
         }
         JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SUBMIT, renderFunc, input);
     },
-    initPublic: function(tenant, application, configuration, onLoad, jaaqlUrl = null) {
-        JEQL.init(application, tenant, configuration, onLoad, false, jaaqlUrl, false);
+    initPublic: function(application, configuration, onLoad, jaaqlUrl = null) {
+        JEQL.init(application, configuration, onLoad, false, jaaqlUrl, false);
     },
-    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, configuration = null, tenant = null, showSpinner = true) {
+    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, configuration = null, showSpinner = true) {
         if (window.hasOwnProperty("JEQL__REQUEST_HELPER")) {
             return window.JEQL__REQUEST_HELPER;
         } else {
-            window.JEQL__TENANT = tenant;
             window.JEQL__APP = application;
             window.JEQL__CONFIG = configuration;
 
@@ -1302,18 +1271,17 @@ let JEQL = {
             return requestHelper;
         }
     },
-    init: function(application = null, tenant = null, configuration = null, onLoad = null,
+    init: function(application = null, configuration = null, onLoad = null,
                    doRenderAccountBanner = true, jaaqlUrl = null, authenticated = true) {
         let wasOnLoadNone = !onLoad;
         if (!onLoad) { onLoad = function() {  }; }
 
-        let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl, application, configuration, tenant);
+        let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl, application, configuration);
 
         if (!authenticated) {
             let body = {};
             body[JEQL.KEY_APPLICATION] = window.JEQL__APP;
             body[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
-            body[JEQL.KEY_TENANT] = window.JEQL__TENANT;
             let credentials = JEQL_REQUESTS.makeSimple(requestHelper, JEQL.ACTION_FETCH_APPLICATION_PUBLIC_USER, null, body, null,
                 false);
             if (!credentials) {
@@ -1343,9 +1311,6 @@ let JEQL = {
         }
 
         return requestHelper;
-    },
-    initNoTenant: function(application, onLoad) {
-        return JEQL.init(application, null, null, onLoad);
     }
 }
 
