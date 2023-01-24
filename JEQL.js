@@ -71,8 +71,6 @@ let JEQL_UTILS = {
     }
 }
 
-JEQL_UTILS.loadStyleSheets();
-
 let JEQL_REQUESTS = {
     ERR_UNEXPECTED_CRED_CHALLENGE: "Unexpected credential challenge for request type simple",
     HTTP_STATUS_DEFAULT: "DEFAULT",
@@ -470,7 +468,6 @@ let JEQL = {
     ACTION_SIGNUP_STATUS: "GET /account/signup/status",
     ACTION_RESET_STATUS: "GET /account/reset-password/status",
     ACTION_LOGIN: "POST /oauth/token",
-    ACTION_FETCH_APPLICATION_PUBLIC_USER: "GET /public",
     ACTION_REFRESH: "POST /oauth/refresh",
     ACTION_SUBMIT: "POST /submit",
     ACTION_SEND_EMAIL: "POST /emails",
@@ -575,7 +572,11 @@ let JEQL = {
         elem.innerHTML += html;
         return elem;
     },
-    tupleToObject: function(row, columns) {
+    tupleToObject: function(row, columns, cellTransformer) {
+        if (!cellTransformer) {
+            cellTransformer = function(val) { return val; };
+        }
+
         let obj = {};
         for (let i2 = 0; i2 < columns.length; i2 ++) {
             if (columns[i2].constructor === Object) {
@@ -583,20 +584,26 @@ let JEQL = {
                 let subResponse = {};
                 subResponse[JEQL.KEY_COLUMNS] = columns[i2][objKey];
                 subResponse[JEQL.KEY_ROWS] = row[i2];
-                obj[objKey] = JEQL.tuplesToObjects(subResponse);
+                obj[objKey] = JEQL.tuplesToObjects(subResponse, cellTransformer);
             } else {
-                obj[columns[i2]] = row[i2];
+                obj[columns[i2]] = cellTransformer(row[i2]);
             }
         }
         return obj;
     },
-    tuplesToObjects: function(response) {
+    tuplesToObjects: function(response, cellTransformer) {
+        // This is an optimisation. I don't initialise the function per row, there may be a cost to that, but if someone wants to call
+        // tupleToObject on it's own, the logic is there
+        if (!cellTransformer) {
+            cellTransformer = function(val) { return val; };
+        }
+
         let columns = response[JEQL.KEY_COLUMNS];
         let rows = response[JEQL.KEY_ROWS];
         let ret = [];
 
         for (let i = 0; i < rows.length; i ++) {
-            ret.push(JEQL.tupleToObject(rows[i], columns));
+            ret.push(JEQL.tupleToObject(rows[i], columns, cellTransformer));
         }
 
         return ret;
@@ -1279,15 +1286,11 @@ let JEQL = {
         let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl, application, configuration);
 
         if (!authenticated) {
-            let body = {};
-            body[JEQL.KEY_APPLICATION] = window.JEQL__APP;
-            body[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
-            let credentials = JEQL_REQUESTS.makeSimple(requestHelper, JEQL.ACTION_FETCH_APPLICATION_PUBLIC_USER, null, body, null,
-                false);
-            if (!credentials) {
-                console.error("Could not find public user");
-                return
-            }
+            // Set the credentials to the public user
+            let credentials = {};
+            credentials[JEQL.KEY_USERNAME] = "public";
+            credentials[JEQL.KEY_PASSWORD] = "jaaql_public_password"
+
             requestHelper.setCredentials(credentials);
         }
 
