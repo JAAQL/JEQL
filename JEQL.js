@@ -333,8 +333,7 @@ let JEQL_REQUESTS = {
                         renderFunc("Credentials incorrect. Please try again");
                     } else if (isRefresh) {
                         requestHelper.resetAuthToken();
-                        requestHelper.loginFunc(requestHelper, function () { JEQL_REQUESTS.make(requestHelper, action, renderFunc, body, json); },
-                            "Credentials expired. Please login again");
+                        requestHelper.loginFunc(requestHelper, function () { JEQL_REQUESTS.make(requestHelper, action, renderFunc, body, json); });
                     } else {
                         requestHelper.refreshFunc(requestHelper,
                             function () { JEQL_REQUESTS.make(requestHelper, action, renderFunc, body, json); });
@@ -346,8 +345,10 @@ let JEQL_REQUESTS = {
                     if (isOauth || isRefresh) {
                         requestHelper.setAuthToken(res);
                         requestHelper.releaseQueues();
+                        JEQL_REQUESTS.getResponseCodeHandler(renderFunc, this.status)();
+                    } else {
+                        JEQL_REQUESTS.getResponseCodeHandler(renderFunc, this.status)(res, requestHelper, action, renderFunc, body, json);
                     }
-                    JEQL_REQUESTS.getResponseCodeHandler(renderFunc, this.status)(res, requestHelper, action, renderFunc, body, json);
                 }
             }
         };
@@ -448,8 +449,9 @@ let JEQL_REQUESTS = {
 }
 
 let JEQL = {
-    VERSION: "3.0.6",
+    VERSION: "3.0.9",
     STORAGE_JAAQL_TOKEN: "JAAQL__TOKEN",
+    STORAGE_IS_PUBLIC: "IS_PUBLIC",
     FIESTA_INTRODUCER: "introducer",
     FIESTA_EXPRESSION: "expression",
     FIESTA_SEPARATOR: "separator",
@@ -778,6 +780,22 @@ let JEQL = {
         JEQL.makeBuildable(element);
         JEQL.rendererLogin(element, window.JEQL__REQUEST_HELPER, callback, null);
     },
+    redirectWithinModal: function(frameName, target, callback) {
+        var xhttp;
+
+        if (!frameName.endsWith(".html")) {
+            frameName += ".html";
+        }
+        xhttp = new XMLHttpRequest();
+        xhttp.onreadystatechange = function() {
+            if (this.readyState === 4) {
+                console.log(this);
+            }
+        };
+
+        xhttp.open("GET", frameName);
+        xhttp.send();
+    },
     login: function(data, rememberMe, loginHandleFunc) {
         let requestHelper = window.JEQL__REQUEST_HELPER;
 
@@ -789,66 +807,31 @@ let JEQL = {
     },
     rendererLogin(modal, requestHelper, callback, errMsg) {
         modal.id = JEQL.ID_LOGIN_MODAL;
-        modal.appendChild(JEQL.elemBuilder("div").buildClass(JEQL.CLS_CENTER).buildHTML(`
-            <h1>
-                Login
-            </h1>
-        `));
-
-        let mainLoginDiv = JEQL.elemBuilder("div").buildHTML(`
-            <span id=${JEQL.ID_LOGIN_ERROR} style="color: red"></span>
-            <br>
-        `);
-
-        mainLoginDiv.buildHTML(`
-            <label class="${JEQL.CLS_STRONG}">
-                Username
-                <input class="${JEQL.CLS_INPUT} ${JEQL.CLS_INPUT_FULL}" type="text" placeholder="Enter username" id=${JEQL.ID_USERNAME}>
-            </label>
-            <label class="${JEQL.CLS_STRONG}">
-                Password 
-                <input class="${JEQL.CLS_INPUT} ${JEQL.CLS_INPUT_FULL}" type="password" placeholder="Enter password" id=${JEQL.ID_PASSWORD}>
-            </label>
-        `);
-        modal.appendChild(mainLoginDiv);
-        if (errMsg) {
-            document.getElementById(JEQL.ID_LOGIN_ERROR).innerHTML = errMsg + "<br>";
-        }
-
-        let rememberMeBox = modal.buildChild("div").buildHTML(`
-            <label for=${JEQL.ID_REMEMBER_ME}>Remember me</label>
-            <input type="checkbox" id=${JEQL.ID_REMEMBER_ME}>
-        `);
-        rememberMeBox.checked = requestHelper.rememberMe;
-
-        let createLoginButton = function(buttonDiv) {
-            return buttonDiv
-                .buildChild("button")
-                .buildClass(JEQL.CLS_BUTTON)
-                .buildText("Login")
-                .buildAttr("id", JEQL.ID_LOGIN_BUTTON);
-        }
-        let buttonDiv = JEQL.elemBuilder("div");
-        let button = createLoginButton(buttonDiv);
-        modal.appendChild(buttonDiv);
-        button.addEventListener("click", function() {
-            if (document.getElementById(JEQL.ID_REMEMBER_ME).checked !== requestHelper.rememberMe) {
-                requestHelper.logout(false, true);
-                requestHelper.setRememberMe(document.getElementById(JEQL.ID_REMEMBER_ME).checked);
-            }
-            JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, function(loginErrMsg) {
-                if (loginErrMsg) {
-                    JEQL.handleLoginError(modal, loginErrMsg);
-                    document.getElementById(JEQL.ID_USERNAME).focus();
-                } else {
-                    modal.closeModal();
-                    callback();
+        JEQL.redirectWithinModal("login.html", modal, function () {
+            document.getElementById(JEQL.ID_LOGIN_BUTTON).addEventListener("click", function () {
+                if (document.getElementById(JEQL.ID_REMEMBER_ME).checked !== requestHelper.rememberMe) {
+                    requestHelper.logout(false, true);
+                    requestHelper.setRememberMe(document.getElementById(JEQL.ID_REMEMBER_ME).checked);
                 }
-            }, JEQL.getLoginData());
+                JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, function (loginErrMsg) {
+                    if (loginErrMsg) {
+                        JEQL.handleLoginError(modal, loginErrMsg);
+                        document.getElementById(JEQL.ID_USERNAME).focus();
+                    } else {
+                        modal.closeModal();
+                        callback();
+                    }
+                }, JEQL.getLoginData());
+            });
+            JEQL.bindButton(JEQL.ID_USERNAME, JEQL.ID_LOGIN_BUTTON);
+            JEQL.bindButton(JEQL.ID_PASSWORD, JEQL.ID_LOGIN_BUTTON);
+            document.getElementById(JEQL.ID_USERNAME).focus();
+
+            document.getElementById(JEQL.ID_REMEMBER_ME).checked = requestHelper.rememberMe;
+            if (errMsg) {
+                document.getElementById(JEQL.ID_LOGIN_ERROR).innerHTML = errMsg + "<br>";
+            }
         });
-        JEQL.bindButton(JEQL.ID_USERNAME, JEQL.ID_LOGIN_BUTTON);
-        JEQL.bindButton(JEQL.ID_PASSWORD, JEQL.ID_LOGIN_BUTTON);
-        document.getElementById(JEQL.ID_USERNAME).focus();
     },
     showLoginModal: function(requestHelper, callback, errMsg) {
         if (requestHelper.credentials) {
@@ -1000,6 +983,11 @@ let JEQL = {
     },
     convertCallbackToObject: function(callback) {
         return function(data) {
+            if (data[JEQL.KEY_ROWS].length === 0) {
+                throw Error("Expected singleton but received no rows for operation");
+            } else if (data[JEQL.KEY_ROWS].length > 1) {
+                throw Error("Expected singleton but received multiple rows for operation");
+            }
             callback(JEQL.tupleToObject(data[JEQL.KEY_ROWS][0], data[JEQL.KEY_COLUMNS]));
         }
     },
@@ -1288,10 +1276,16 @@ let JEQL = {
         if (!authenticated) {
             // Set the credentials to the public user
             let credentials = {};
-            credentials[JEQL.KEY_USERNAME] = "public";
+            credentials[JEQL.KEY_USERNAME] = "anonymous";
             credentials[JEQL.KEY_PASSWORD] = "jaaql_public_password"
 
             requestHelper.setCredentials(credentials);
+            requestHelper.getStorage().setItem(JEQL.STORAGE_IS_PUBLIC, "true");
+        } else {
+            if (requestHelper.getStorage().getItem(JEQL.STORAGE_IS_PUBLIC)) {
+                requestHelper.getStorage().removeItem(JEQL.STORAGE_IS_PUBLIC);
+                requestHelper.logout(false);
+            }
         }
 
         requestHelper.authToken = requestHelper.getStorage().getItem(JEQL.STORAGE_JAAQL_TOKEN);
