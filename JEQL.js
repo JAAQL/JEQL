@@ -497,11 +497,11 @@ let JEQL = {
     ARG_INVITE_TOKEN: "invite_token",
     ARG_RESET_TOKEN: "reset_token",
     ID_LOGIN_MODAL: "jeql__login_modal",
-    ID_LOGIN_BUTTON: "jeql__login_button",
-    ID_LOGIN_ERROR: "jeql__login_error",
-    ID_USERNAME: "jeql__username",
-    ID_PASSWORD: "jeql__password",
-    ID_REMEMBER_ME: "jeql__remember_me",
+    ID_LOGIN_BUTTON: "login_button",
+    ID_LOGIN_ERROR: "login_error",
+    ID_USERNAME: "username",
+    ID_PASSWORD: "password",
+    ID_REMEMBER_ME: "remember_me",
     KEY_QUERY: "query",
     KEY_ROWS: "rows",
     KEY_COLUMNS: "columns",
@@ -783,13 +783,14 @@ let JEQL = {
     redirectWithinModal: function(frameName, target, callback) {
         var xhttp;
 
-        if (!frameName.endsWith(".html")) {
+        if (!frameName.split("/").at(-1).indexOf(".")) {
             frameName += ".html";
         }
         xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function() {
             if (this.readyState === 4) {
-                console.log(this);
+                target.innerHTML = this.response;
+                callback();
             }
         };
 
@@ -807,7 +808,7 @@ let JEQL = {
     },
     rendererLogin(modal, requestHelper, callback, errMsg) {
         modal.id = JEQL.ID_LOGIN_MODAL;
-        JEQL.redirectWithinModal("login.html", modal, function () {
+        JEQL.redirectWithinModal(window.JEQL__ARTIFACT_PATH + "account/login.htmlbody", modal, function () {
             document.getElementById(JEQL.ID_LOGIN_BUTTON).addEventListener("click", function () {
                 if (document.getElementById(JEQL.ID_REMEMBER_ME).checked !== requestHelper.rememberMe) {
                     requestHelper.logout(false, true);
@@ -1231,10 +1232,11 @@ let JEQL = {
     initPublic: function(application, configuration, onLoad, jaaqlUrl = null) {
         JEQL.init(application, configuration, onLoad, false, jaaqlUrl, false);
     },
-    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, configuration = null, showSpinner = true) {
+    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, configuration = null, showSpinner = true, artifactPath = "") {
         if (window.hasOwnProperty("JEQL__REQUEST_HELPER")) {
             return window.JEQL__REQUEST_HELPER;
         } else {
+            window.JEQL__ARTIFACT_PATH = artifactPath;
             window.JEQL__APP = application;
             window.JEQL__CONFIG = configuration;
 
