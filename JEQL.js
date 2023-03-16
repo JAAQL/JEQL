@@ -200,7 +200,7 @@ let JEQL_REQUESTS = {
             return didReset;
         }
     },
-    jsonToUrlEncoded: function(element, key, list){
+    jsonToUrlEncoded: function(element, key, list) {
         list = list || [];
         if(typeof(element) == 'object') {
             for (let idx in element) {
@@ -451,7 +451,10 @@ let JEQL_REQUESTS = {
 let JEQL = {
     VERSION: "3.0.9",
     STORAGE_JAAQL_TOKEN: "JAAQL__TOKEN",
-    STORAGE_IS_PUBLIC: "IS_PUBLIC",
+    STORAGE_IS_PUBLIC: "JAAQL__IS_PUBLIC",
+    SESSION_STORAGE_EVENT_LOCK: "JAAQL__EVENT_LOCK",
+    SESSION_STORAGE_EVENT_KEY: "JAAQL__EVENT_KEY",
+    SESSION_STORAGE_EVENT_CODE: "JAAQL__EVENT_CODE",
     FIESTA_INTRODUCER: "introducer",
     FIESTA_EXPRESSION: "expression",
     FIESTA_SEPARATOR: "separator",
@@ -461,14 +464,14 @@ let JEQL = {
     SIGNUP_STARTED: 1,
     SIGNUP_ALREADY_REGISTERED: 2,
     SIGNUP_COMPLETED: 3,
-    ACTION_SIGNUP: "POST /account/signup/request",
-    ACTION_RESET: "POST /account/reset-password",
+    ACTION_SIGNUP: "POST /sign-up",
+    ACTION_RESET_PASSWORD: "POST /account/reset-password",
+    ACTION_CHECK_SECURITY_EVENT: "POST /security-event",
+    ACTION_FINISH_SECURITY_EVENT: "PUT /security-event",
     ACTION_SIGNUP_WITH_TOKEN: "POST /account/signup/activate",
-    ACTION_RESET_WITH_TOKEN: "POST /account/reset-password/reset",
     ACTION_FETCH_SIGNUP: "GET /account/signup/fetch",
     ACTION_FINISH_SIGNUP: "POST /account/signup/finish",
     ACTION_SIGNUP_STATUS: "GET /account/signup/status",
-    ACTION_RESET_STATUS: "GET /account/reset-password/status",
     ACTION_LOGIN: "POST /oauth/token",
     ACTION_REFRESH: "POST /oauth/refresh",
     ACTION_SUBMIT: "POST /submit",
@@ -478,6 +481,7 @@ let JEQL = {
     RESET_NOT_STARTED: 0,
     RESET_STARTED: 1,
     RESET_COMPLETED: 2,
+    CLS_MODAL_CONTENT: "jeql__modal_content",
     CLS_MODAL_OUTER: "jeql__modal_outer",
     CLS_MODAL: "jeql__modal",
     CLS_MODAL_WIDE: "jeql__modal_wide",
@@ -496,28 +500,28 @@ let JEQL = {
     LOCAL_DEBUGGING_URL: "http://127.0.0.1:6060",
     ARG_INVITE_TOKEN: "invite_token",
     ARG_RESET_TOKEN: "reset_token",
-    ID_LOGIN_MODAL: "jeql__login_modal",
-    ID_LOGIN_BUTTON: "login_button",
-    ID_LOGIN_ERROR: "login_error",
-    ID_USERNAME: "username",
-    ID_PASSWORD: "password",
-    ID_REMEMBER_ME: "remember_me",
+    NAME_USERNAME: "username",
+    NAME_PASSWORD: "password",
+    NAME_REMEMBER_ME: "remember_me",
     KEY_QUERY: "query",
     KEY_ROWS: "rows",
     KEY_COLUMNS: "columns",
     KEY_EMAIL: "email",
     KEY_USERNAME: "username",
+    KEY_UNLOCK_CODE: "unlock_code",
+    KEY_UNLOCK_KEY: "unlock_key",
     KEY_PASSWORD: "password",
     KEY_APPLICATION: "application",
     KEY_TEMPLATE: "template",
     KEY_EXISTING_USER_TEMPLATE: "existing_user_template",
-    KEY_CONFIGURATION: "configuration",
     KEY_INVITE_OR_POLL_KEY: "invite_or_poll_key",
     KEY_RESET_OR_POLL_KEY: "reset_or_poll_key",
     KEY_READ_ONLY: "read_only",
     KEY_INVITE_CODE: "invite_code",
     KEY_RESET_CODE: "reset_code",
     KEY_INVITE_KEY: "invite_key",
+    KEY_EVENT_LOCK: "event_lock",
+    KEY_OAUTH_TOKEN: "oauth_token",
     KEY_RESET_KEY: "reset_key",
     KEY_INVITE_KEY_STATUS: "invite_key_status",
     KEY_RESET_KEY_STATUS: "reset_key_status",
@@ -711,7 +715,12 @@ let JEQL = {
 
         let subDiv = modalDiv.buildChild("div");
         subDiv.closeModal = function() { outerDiv.parentElement.removeChild(outerDiv); };
+        subDiv.setAttribute("class", JEQL.CLS_MODAL_CONTENT);
         modalBodyRender(subDiv);
+    },
+    closeModal: function() {
+        var modal = document.body.getElementsByClassName(JEQL.CLS_MODAL_OUTER)[0];
+        modal.parentElement.removeChild(modal);
     },
     renderModalOk: function(msg, onOk = null, title = "Success!") {
         if (!onOk) { onOk = function() {  }; }
@@ -758,29 +767,30 @@ let JEQL = {
             }
         });
     },
-    getLoginData: function() {
+    getLoginData: function(data) {
         let ret = {};
-        ret[JEQL.KEY_USERNAME] = document.getElementById(JEQL.ID_USERNAME).value;
-        ret[JEQL.KEY_PASSWORD] = document.getElementById(JEQL.ID_PASSWORD).value;
+        ret[JEQL.KEY_USERNAME] = data[JEQL.NAME_USERNAME];
+        ret[JEQL.KEY_PASSWORD] = data[JEQL.NAME_PASSWORD];
         return ret;
     },
-    handleLoginError: function(modal, loginErrMsg) {
-        document.getElementById(JEQL.ID_LOGIN_ERROR).innerHTML = loginErrMsg + "<br>";
-        let inputs = modal.getElementsByClassName(JEQL.CLS_INPUT);
-
-        for (let inp in inputs) {
-            if (inputs.hasOwnProperty(inp)) {
-                inputs[inp].style.borderColor = "red";
+    setHTML: function(ele, html) {
+        var i, scriptTags, forms;
+        ele.innerHTML = html;
+        forms = ele.getElementsByTagName("form");
+        if (forms.length !== 0) {
+            if (forms[0].elements.length !== 0) {
+                forms[0].elements[0].focus();
             }
         }
-    },
-    renderLoginInPage: function(element, callback) {
-        if (!callback) { callback = function() { }; }
-        element.closeModal = function() { element.innerHTML = ""; }
-        JEQL.makeBuildable(element);
-        JEQL.rendererLogin(element, window.JEQL__REQUEST_HELPER, callback, null);
+        scriptTags = ele.getElementsByTagName("script");
+        for (i = 0; i < scriptTags.length; i ++) {
+            BS.tempParent = scriptTags[i].parentElement;
+            eval(scriptTags[i].text);
+        }
     },
     redirectWithinModal: function(frameName, target, callback) {
+        frameName = window.JEQL__ARTIFACT_PATH + frameName;
+        if (!callback) { callback = function() {  }; }
         var xhttp;
 
         if (!frameName.split("/").at(-1).indexOf(".")) {
@@ -789,7 +799,7 @@ let JEQL = {
         xhttp = new XMLHttpRequest();
         xhttp.onreadystatechange = function() {
             if (this.readyState === 4) {
-                target.innerHTML = this.response;
+                JEQL.setHTML(target, this.response);
                 callback();
             }
         };
@@ -797,51 +807,55 @@ let JEQL = {
         xhttp.open("GET", frameName);
         xhttp.send();
     },
-    login: function(data, rememberMe, loginHandleFunc) {
+    _getAncestor: function(subject, ancestorLookupName, isTag) {
+        // If isTag = false then lookup class
+        if (
+            (isTag && subject.tagName
+            && subject.tagName.indexOf(ancestorLookupName) !== -1) || (!isTag && subject.classList.contains(ancestorLookupName))
+        ) {
+            return subject;
+        } else if (!subject.parentElement) {
+            return null;
+        } else {
+            return JEQL._getAncestor(subject.parentElement, ancestorLookupName, isTag);
+        }
+    },
+    getAncestorByTag: function(subject, ancestorClass) {
+        return JEQL._getAncestor(subject, ancestorClass, true);
+    },
+    getAncestorByClass: function(subject, ancestorTag) {
+        return JEQL._getAncestor(subject, ancestorTag, true);
+    },
+    loginFromModal: function(data, loginHandleFunc) {
+        let theForm = event.target;
         let requestHelper = window.JEQL__REQUEST_HELPER;
 
-        requestHelper.logout(false);
-        if (rememberMe !== requestHelper.rememberMe) {
-            requestHelper.setRememberMe(rememberMe);
+        if (document.getElementById(JEQL.ID_REMEMBER_ME).checked !== requestHelper.rememberMe) {
+            requestHelper.logout(false, true);
+            requestHelper.setRememberMe(document.getElementById(JEQL.ID_REMEMBER_ME).checked);
         }
-        JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, loginHandleFunc, data);
-    },
-    rendererLogin(modal, requestHelper, callback, errMsg) {
-        modal.id = JEQL.ID_LOGIN_MODAL;
-        JEQL.redirectWithinModal(window.JEQL__ARTIFACT_PATH + "account/login.htmlbody", modal, function () {
-            document.getElementById(JEQL.ID_LOGIN_BUTTON).addEventListener("click", function () {
-                if (document.getElementById(JEQL.ID_REMEMBER_ME).checked !== requestHelper.rememberMe) {
-                    requestHelper.logout(false, true);
-                    requestHelper.setRememberMe(document.getElementById(JEQL.ID_REMEMBER_ME).checked);
-                }
-                JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, function (loginErrMsg) {
-                    if (loginErrMsg) {
-                        JEQL.handleLoginError(modal, loginErrMsg);
-                        document.getElementById(JEQL.ID_USERNAME).focus();
-                    } else {
-                        modal.closeModal();
-                        callback();
-                    }
-                }, JEQL.getLoginData());
-            });
-            JEQL.bindButton(JEQL.ID_USERNAME, JEQL.ID_LOGIN_BUTTON);
-            JEQL.bindButton(JEQL.ID_PASSWORD, JEQL.ID_LOGIN_BUTTON);
-            document.getElementById(JEQL.ID_USERNAME).focus();
 
-            document.getElementById(JEQL.ID_REMEMBER_ME).checked = requestHelper.rememberMe;
-            if (errMsg) {
-                document.getElementById(JEQL.ID_LOGIN_ERROR).innerHTML = errMsg + "<br>";
+        JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, function (loginErrMsg) {
+            if (loginErrMsg) {
+
+            } else {
+                JEQL.getAncestorByClass(event.target, JEQL.CLS_MODAL)
             }
-        });
+        }, JEQL.getLoginData(data));
     },
-    showLoginModal: function(requestHelper, callback, errMsg) {
+    presentLoginChallenge: function() {
+        JEQL.renderModal(function(modal) {
+            JEQL.redirectWithinModal(window.JEQL__LOGIN_MODAL_LOCATION, modal);
+        }, false);
+    },
+    presentLoginChallengeIfNoCredentials: function(requestHelper, callback) {
         if (requestHelper.credentials) {
             let creds = {};
             creds[JEQL.KEY_USERNAME] = requestHelper.credentials[JEQL.KEY_USERNAME];
             creds[JEQL.KEY_PASSWORD] = requestHelper.credentials[JEQL.KEY_PASSWORD];
             JEQL_REQUESTS.makeJson(requestHelper, JEQL.ACTION_LOGIN, callback, creds);
         } else {
-            JEQL.renderModal(function(modal) { JEQL.rendererLogin(modal, requestHelper, callback, errMsg); }, false);
+            JEQL.presentLoginChallenge()
         }
     },
     onRefreshToken: function(requestHelper, callback) {
@@ -999,56 +1013,14 @@ let JEQL = {
             formed[JEQL.KEY_PARAMETERS] = params;
         }
         formed[JEQL.KEY_APPLICATION] = window.JEQL__APP;
-        formed[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
         if (schema) {
             formed[JEQL.KEY_SCHEMA] = schema;
         }
         return formed;
     },
-    fetchDefaultTemplates(callback) {
-        let query = {};
-        query[JEQL.KEY_QUERY] = "SELECT * FROM my_email_template_defaults WHERE application = :application";
-        let parameters = {};
-        parameters[JEQL.KEY_APPLICATION] = window.JEQL__APP;
-        query[JEQL.KEY_PARAMETERS] = parameters;
-        JEQL.submit(query, JEQL.convertCallbackToObject(callback));
-    },
-    resetPassword(data, onreset, errFunc) {
-        if (!onreset) {
-            onreset = function() {  };
-        }
-        if (!errFunc) {
-            errFunc = function() { throw `Could not signup!`; };
-        }
-
-        if (typeof(onreset) !== "function") {
-            let onresetStr = onreset;
-            onreset = function(token) {
-                let connector = onresetStr.includes("?") ? "&" : "?";
-                window.location.assign(onresetStr + connector + encodeURIComponent(JEQL.ARG_RESET_TOKEN) + "=" + encodeURIComponent(token));
-            }
-        }
-        data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
-        data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
-
-        let resetFunc = function(ret) { onreset(ret[JEQL.KEY_RESET_KEY]); };
-        let resetDict = {};
-        resetDict[JEQL_REQUESTS.HTTP_STATUS_OK] = resetFunc;
-        resetDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
-
-        if (!data.hasOwnProperty(data[JEQL.KEY_TEMPLATE])) {
-            JEQL.fetchDefaultTemplates(function(config) {
-                data[JEQL.KEY_TEMPLATE] = config[JEQL.KEY_DEFAULT_EMAIL_RESET_PASSWORD_TEMPLATE];
-                JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_RESET, resetDict, null, data);
-            });
-        } else {
-            JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_RESET, resetDict, null, data);
-        }
-    },
     sendEmail: function(template, parameters, attachments, onSuccess, onError) {
         let data = {};
         data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
-        data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
         data[JEQL.KEY_PARAMETERS] = parameters;
         data[JEQL.KEY_ATTACHMENTS] = attachments;
         data[JEQL.KEY_TEMPLATE] = template;
@@ -1058,37 +1030,81 @@ let JEQL = {
         resDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = onError;
         JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SEND_EMAIL, resDict, data);
     },
-    signup: function(data, onSignup, errFunc) {
-        if (!onSignup) {
-            onSignup = function() {  };
+    _startSecurityEvent: function(action, errMsg, data, onRequest, errFunc) {
+        if (!onRequest) {
+            onRequest = function() {  };
         }
         if (!errFunc) {
-            errFunc = function() { throw `Could not signup!`; };
-        }
-        if (typeof(onSignup) !== "function") {
-            let onSignupStr = onSignup;
-            onSignup = function(token) {
-                let connector = onSignupStr.includes("?") ? "&" : "?";
-                window.location.assign(onSignupStr + connector + encodeURIComponent(JEQL.ARG_INVITE_TOKEN) + "=" + encodeURIComponent(token));
-            }
+            errFunc = function() { throw Error("Could not " + errMsg + "!"); };
         }
         data[JEQL.KEY_APPLICATION] = window.JEQL__APP;
-        data[JEQL.KEY_CONFIGURATION] = window.JEQL__CONFIG;
 
-        let signupFunc = function(ret) { onSignup(ret[JEQL.KEY_INVITE_KEY]); };
-        let signupDict = {};
-        signupDict[JEQL_REQUESTS.HTTP_STATUS_OK] = signupFunc;
-        signupDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
+        let requestFunc = function(ret) {
+            window.sessionStorage.setItem(JEQL.SESSION_STORAGE_EVENT_LOCK, ret[JEQL.KEY_EVENT_LOCK]);
+            onRequest(ret[JEQL.KEY_EVENT_LOCK]);
+        };
+        let requestDict = {};
+        requestDict[JEQL_REQUESTS.HTTP_STATUS_OK] = requestFunc;
+        requestDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
 
-        if (!data.hasOwnProperty(data[JEQL.KEY_TEMPLATE])) {
-            JEQL.fetchDefaultTemplates(function(templates) {
-                data[JEQL.KEY_TEMPLATE] = templates[JEQL.KEY_DEFAULT_EMAIL_SIGNUP_TEMPLATE];
-                data[JEQL.KEY_EXISTING_USER_TEMPLATE] = templates[JEQL.KEY_DEFAULT_EMAIL_ALREADY_SIGNED_UP_TEMPLATE];
-                JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SIGNUP, signupDict, null, data);
-            })
-        } else {
-            JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SIGNUP, signupDict, null, data);
+        JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, action, requestDict, null, data);
+    },
+    signup: function(data, onSignup, errFunc) {
+        JEQL._startSecurityEvent(JEQL.ACTION_SIGNUP, "signup", data, onSignup, errFunc);
+    },
+    resetPassword: function(data, onResetPassword, errFunc) {
+        JEQL._startSecurityEvent(JEQL.ACTION_RESET_PASSWORD, "reset password", data, onResetPassword, errFunc);
+    },
+    checkSecurityEventUnlock: function(data, onVerify, errFunc) {
+        if (!onVerify) {
+            onVerify = function() {  };
         }
+        if (!errFunc) {
+            errFunc = function() { throw Error("Could not verify!"); };
+        }
+        data[JEQL.KEY_EVENT_LOCK] = window.sessionStorage.getItem(JEQL.SESSION_STORAGE_EVENT_LOCK);
+        if (JEQL.KEY_UNLOCK_CODE in data) {
+            window.sessionStorage.setItem(JEQL.SESSION_STORAGE_EVENT_CODE, data[JEQL.KEY_UNLOCK_CODE]);
+        } else {
+            window.sessionStorage.setItem(JEQL.SESSION_STORAGE_EVENT_KEY, data[JEQL.KEY_UNLOCK_KEY])
+        }
+
+        let verifyFunc = function(ret) { onVerify(ret); };
+        let verifyDict = {};
+        verifyDict[JEQL_REQUESTS.HTTP_STATUS_OK] = verifyFunc;
+        verifyDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
+
+        JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_CHECK_SECURITY_EVENT, verifyDict, null, data);
+    },
+    finishSecurityEvent: function(data, errFunc, onFinish) {
+        // onFinish is last due to the fact that it is not required
+        if (!onFinish) {
+            onFinish = function() {  };
+        }
+        if (!errFunc) {
+            errFunc = function() { throw Error("Could not finish!"); };
+        }
+        data[JEQL.KEY_EVENT_LOCK] = window.sessionStorage.getItem(JEQL.SESSION_STORAGE_EVENT_LOCK);
+        if (window.sessionStorage.getItem(JEQL.SESSION_STORAGE_EVENT_CODE)) {
+            data[JEQL.KEY_UNLOCK_CODE] = window.sessionStorage.getItem(JEQL.SESSION_STORAGE_EVENT_CODE);
+            window.sessionStorage.removeItem(JEQL.SESSION_STORAGE_EVENT_CODE);
+        } else {
+            data[JEQL.KEY_UNLOCK_KEY] = window.sessionStorage.getItem(JEQL.SESSION_STORAGE_EVENT_KEY);
+            window.sessionStorage.removeItem(JEQL.SESSION_STORAGE_EVENT_KEY);
+        }
+        window.sessionStorage.removeItem(JEQL.SESSION_STORAGE_EVENT_LOCK);
+
+        let finishFunc = function(ret) {
+            window.JEQL__REQUEST_HELPER.setAuthToken(ret[JEQL.KEY_OAUTH_TOKEN]);
+            window.JEQL__REQUEST_HELPER.releaseQueues();
+
+            onFinish(ret[JEQL.KEY_PARAMETERS]);
+        }
+        let finishDict = {};
+        finishDict[JEQL_REQUESTS.HTTP_STATUS_OK] = finishFunc;
+        finishDict[JEQL_REQUESTS.ANY_STATUS_EXCEPT_5xx_OR_400] = errFunc;
+
+        JEQL_REQUESTS.makeSimple(window.JEQL__REQUEST_HELPER, JEQL.ACTION_FINISH_SECURITY_EVENT, finishDict, null, data);
     },
     signupWithToken: function(token, password, handleFunc) {
         let data = {};
@@ -1229,16 +1245,15 @@ let JEQL = {
         }
         JEQL_REQUESTS.makeJson(window.JEQL__REQUEST_HELPER, JEQL.ACTION_SUBMIT, renderFunc, input);
     },
-    initPublic: function(application, configuration, onLoad, jaaqlUrl = null) {
-        JEQL.init(application, configuration, onLoad, false, jaaqlUrl, false);
+    initPublic: function(application, onLoad, jaaqlUrl = null) {
+        JEQL.init(application, onLoad, false, jaaqlUrl, false);
     },
-    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, configuration = null, showSpinner = true, artifactPath = "") {
+    getOrInitJEQLRequestHelper: function(jaaqlUrl, application, showSpinner = true, artifactPath = "") {
         if (window.hasOwnProperty("JEQL__REQUEST_HELPER")) {
             return window.JEQL__REQUEST_HELPER;
         } else {
             window.JEQL__ARTIFACT_PATH = artifactPath;
             window.JEQL__APP = application;
-            window.JEQL__CONFIG = configuration;
 
             if (jaaqlUrl === null) {
                 jaaqlUrl = JEQL.getJaaqlUrl();
@@ -1257,7 +1272,8 @@ let JEQL = {
             let logoutFunc = function (storage) {
                 storage.removeItem(JEQL.STORAGE_JAAQL_TOKEN);
             };
-            let requestHelper = new JEQL_REQUESTS.RequestHelper(jaaqlUrl, JEQL.ACTION_LOGIN, JEQL.ACTION_REFRESH, JEQL.showLoginModal,
+            let requestHelper = new JEQL_REQUESTS.RequestHelper(jaaqlUrl, JEQL.ACTION_LOGIN, JEQL.ACTION_REFRESH,
+                JEQL.presentLoginChallengeIfNoCredentials,
                 JEQL.onRefreshToken, JEQL.xHttpSetAuth, [JEQL.ACTION_SUBMIT], JEQL.KEY_USERNAME,
                 setAuthTokenFunc, logoutFunc);
 
@@ -1268,12 +1284,16 @@ let JEQL = {
             return requestHelper;
         }
     },
-    init: function(application = null, configuration = null, onLoad = null,
+    init: function(application = null, onLoad = null,
                    doRenderAccountBanner = true, jaaqlUrl = null, authenticated = true) {
         let wasOnLoadNone = !onLoad;
         if (!onLoad) { onLoad = function() {  }; }
 
-        let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl, application, configuration);
+        if (!window.JEQL__LOGIN_MODAL_LOCATION) {
+            window.JEQL__LOGIN_MODAL_LOCATION = "account/login.htmlbody";
+        }
+
+        let requestHelper = JEQL.getOrInitJEQLRequestHelper(jaaqlUrl, application);
 
         if (!authenticated) {
             // Set the credentials to the public user
